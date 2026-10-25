@@ -1,0 +1,147 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title">Mon Profil</h1>
+    <p class="page-description">Gérez vos informations personnelles et consultez vos données de gouvernance.</p>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast-success" *ngIf="showSuccessToast">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+    Modifications enregistrées avec succès !
+  </div>
+
+  <div *ngIf="isLoading" class="loading-state">
+    Chargement de votre profil...
+  </div>
+
+  <div *ngIf="!isLoading && membreActuel" class="profile-layout">
+    
+    <!-- Left Column: Read-only governance data & avatar -->
+    <div class="card governance-card">
+      <div class="profile-header text-center">
+        <div class="profile-avatar-large mx-auto relative-container">
+          <img *ngIf="membreActuel.photo" [src]="membreActuel.photo" alt="Photo de profil" class="avatar-img" />
+          <span *ngIf="!membreActuel.photo">{{ membreActuel.prenom?.charAt(0) }}{{ membreActuel.nom?.charAt(0) }}</span>
+          
+          <button type="button" class="edit-photo-btn" (click)="fileInput.click()" title="Modifier la photo">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </button>
+          <input type="file" #fileInput (change)="onPhotoSelected($event)" accept="image/*" style="display: none;" />
+        </div>
+        <h3 class="profile-name">{{ membreActuel.prenom }} {{ membreActuel.nom }}</h3>
+        <p class="text-muted">{{ membreActuel.email }}</p>
+      </div>
+
+      <div class="profile-details mt-4">
+        <p class="read-only-notice text-muted text-sm italic mb-3">
+          Ces informations sont gérées par l'administration du laboratoire.
+        </p>
+
+        <div class="detail-group">
+          <label>Rôle Fonctionnel</label>
+          <div class="detail-value">
+            <span class="badge" [ngClass]="{
+              'badge-blue': membreActuel.role === 'DIRECTEUR' || membreActuel.role === 'Directeur',
+              'badge-purple': membreActuel.role === 'CHERCHEUR' || membreActuel.role === 'Chercheur',
+              'badge-gray': membreActuel.role !== 'DIRECTEUR' && membreActuel.role !== 'Directeur' && membreActuel.role !== 'CHERCHEUR' && membreActuel.role !== 'Chercheur'
+            }">
+              {{ membreActuel.role }}
+            </span>
+          </div>
+        </div>
+
+        <div class="detail-group">
+          <label>Statut Professionnel</label>
+          <div class="detail-value">
+            <span class="badge" [ngClass]="{
+              'badge-green': membreActuel.statut === 'ACTIF' || membreActuel.statut === 'Permanent' || membreActuel.statut === 'Actif',
+              'badge-orange': membreActuel.statut === 'DOCTORANT' || membreActuel.statut === 'Doctorant',
+              'badge-gray': membreActuel.statut === 'RETRAITE' || membreActuel.statut === 'Retraité'
+            }">
+              {{ membreActuel.statut }}
+            </span>
+          </div>
+        </div>
+
+        <div class="detail-group">
+          <label>Équipe de Recherche</label>
+          <div class="detail-value">
+            <span class="badge badge-purple">{{ membreActuel.equipeLaboratoire }}</span>
+          </div>
+        </div>
+        
+        <div class="detail-group">
+          <label>État du Compte</label>
+          <div class="detail-value">
+            <span class="badge" [ngClass]="membreActuel.compteActif ? 'badge-green' : 'badge-gray'">
+              {{ membreActuel.compteActif ? 'ACTIF' : 'DÉSACTIVÉ' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Editable form -->
+    <div class="card form-card">
+      <h2 class="card-title">Informations Personnelles</h2>
+      
+      <form [formGroup]="profilForm" (ngSubmit)="onSubmit()" class="profil-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="titreAcademique">Titre Académique</label>
+            <select id="titreAcademique" formControlName="titreAcademique" class="form-control">
+              <option value="">Sélectionner...</option>
+              <option value="Pr.">Pr.</option>
+              <option value="Dr.">Dr.</option>
+              <option value="M.">M.</option>
+              <option value="Mme.">Mme.</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="nom">Nom</label>
+            <input id="nom" type="text" formControlName="nom" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label for="prenom">Prénom</label>
+            <input id="prenom" type="text" formControlName="prenom" class="form-control" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="etablissementOrigine">Établissement d'origine</label>
+          <input id="etablissementOrigine" type="text" formControlName="etablissementOrigine" class="form-control" placeholder="Ex: Université de Poitiers" />
+        </div>
+
+
+
+        <div class="form-group">
+          <label for="biographie">Biographie</label>
+          <textarea id="biographie" formControlName="biographie" rows="4" class="form-control"></textarea>
+        </div>
+
+        <div class="form-actions text-right mt-4">
+          <button type="submit" class="btn btn-primary" [disabled]="profilForm.invalid || !profilForm.dirty || isSaving">
+            <span *ngIf="!isSaving">Enregistrer les modifications</span>
+            <span *ngIf="isSaving" class="flex-center">
+              <svg class="spinner" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" stroke-opacity="0.25"></circle>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Enregistrement...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,12 @@
+**/target/
+**/uploads/
+**/private-data/adhesions/
+**/src/main/resources/application.properties
+**/.idea/
+**/*.iml
+**/node_modules/
+**/dist/
+**/.angular/
+.vscode/
+*.log
+.env

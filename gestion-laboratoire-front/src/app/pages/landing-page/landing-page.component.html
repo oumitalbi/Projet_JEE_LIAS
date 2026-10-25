@@ -1,0 +1,348 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     LIAS — Landing Page
+     Laboratoire d'Intelligence Artificielle et Systèmes
+     ═══════════════════════════════════════════════════════════════ -->
+
+<!-- ── NAVIGATION ── -->
+<nav class="navbar" id="navbar">
+  <div class="nav-container">
+    <a class="nav-brand" href="#">
+      <img src="logo.png" alt="LIAS Logo" class="brand-img">
+    </a>
+
+    <div class="nav-links">
+      <a href="#about" class="nav-link">À propos</a>
+      <a href="#research" class="nav-link">Recherche</a>
+      <a href="#team" class="nav-link">Équipe</a>
+      <a href="#events" class="nav-link">Événements</a>
+    </div>
+
+    <a routerLink="/login" class="btn btn-nav-login" id="nav-login-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
+        <polyline points="10 17 15 12 10 7"/>
+        <line x1="15" y1="12" x2="3" y2="12"/>
+      </svg>
+      Espace Membre
+    </a>
+    <a routerLink="/demande-adhesion" class="btn btn-nav-login">Rejoindre le LIAS</a>
+  </div>
+</nav>
+
+<!-- ── HERO SECTION ── -->
+<header class="hero" id="hero">
+  <div class="hero-bg">
+    <div class="hero-grid"></div>
+    <div class="hero-glow hero-glow--1"></div>
+    <div class="hero-glow hero-glow--2"></div>
+    <div class="hero-particles">
+      @for (i of [1,2,3,4,5,6,7,8]; track i) {
+        <div class="particle" [attr.data-index]="i"></div>
+      }
+    </div>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2zM22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+      </svg>
+      Faculté des Sciences Ben M'Sik — Université Hassan II de Casablanca
+    </div>
+
+    <h1 class="hero-title">
+      Laboratoire d'<span class="hero-highlight">Intelligence Artificielle</span>
+      <br>et Systèmes
+    </h1>
+
+    <div class="hero-tags">
+      <span class="hero-tag">
+        <span class="tag-dot"></span>IA
+      </span>
+      <span class="hero-tag-sep">•</span>
+      <span class="hero-tag">
+        <span class="tag-dot"></span>Données
+      </span>
+      <span class="hero-tag-sep">•</span>
+      <span class="hero-tag">
+        <span class="tag-dot"></span>Smart Cities
+      </span>
+    </div>
+
+    <p class="hero-motto">
+      <em>"Ethical, frugal, and sustainable AI for a better humanity."</em>
+    </p>
+
+    <div class="hero-actions">
+      <a routerLink="/login" class="btn btn-primary btn-lg" id="hero-login-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        Se connecter
+      </a>
+      <a routerLink="/demande-adhesion" class="btn btn-outline btn-lg">Demande d’adhésion</a>
+      <a href="#about" class="btn btn-outline btn-lg" id="hero-discover-btn">
+        Découvrir le LIAS
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <polyline points="19 12 12 19 5 12"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-scroll-indicator">
+    <div class="scroll-line"></div>
+  </div>
+</header>
+
+<!-- ── ABOUT & KEY FIGURES ── -->
+<section class="section section-about" id="about">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">À propos</span>
+      <h2 class="section-title">Un laboratoire au cœur de<br>l'innovation numérique</h2>
+      <p class="section-description">
+        Le LIAS mène des recherches fondamentales et appliquées pour répondre aux enjeux des
+        <strong>villes intelligentes</strong>, aligné sur la vision
+        <strong>"Digital Morocco 2030"</strong>. Nos travaux couvrent l'intelligence artificielle,
+        les systèmes de données massives et les technologies au service de la société.
+      </p>
+    </div>
+
+    <div class="stats-grid">
+      @for (stat of stats; track stat.label) {
+        <div class="stat-card">
+          <span class="stat-value">{{ stat.value }}</span>
+          <span class="stat-label">{{ stat.label }}</span>
+          <span class="stat-detail">{{ stat.detail }}</span>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ── TEAM SECTION ── -->
+<section class="section section-team" id="team">
+  <div class="container">
+    <div class="section-header section-header--light">
+      <span class="section-label section-label--light">Équipe</span>
+      <h2 class="section-title section-title--light">Direction et responsables d'équipes</h2>
+    </div>
+
+    <div class="team-grid">
+      @for (member of teamMembers; track member.name) {
+        <div class="team-card" [class.team-card--director]="member.highlight">
+          <div class="team-card-accent"></div>
+          <div class="team-card-content">
+            <div class="team-avatar">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="team-info">
+              <h4 class="team-name">{{ member.name }}</h4>
+              <p class="team-role">{{ member.role }}</p>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ── RESEARCH AXES ── -->
+<section class="section section-research" id="research">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">Recherche</span>
+      <h2 class="section-title">Axes de recherche fédérateurs</h2>
+      <p class="section-description">
+        Six axes structurants, portés par nos quatre équipes, couvrant l'ensemble du spectre de l'IA et des systèmes.
+      </p>
+    </div>
+
+    <div class="research-grid">
+      @for (axis of researchAxes; track axis.title) {
+        <div class="research-card">
+          <div class="research-icon">
+            @switch (axis.icon) {
+              @case ('brain') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96.44 2.5 2.5 0 01-2.96-3.08 3 3 0 01-.34-5.58 2.5 2.5 0 011.32-4.24 2.5 2.5 0 013.54-.52A2.5 2.5 0 019.5 2z"/>
+                  <path d="M14.5 2A2.5 2.5 0 0012 4.5v15a2.5 2.5 0 004.96.44 2.5 2.5 0 002.96-3.08 3 3 0 00.34-5.58 2.5 2.5 0 00-1.32-4.24 2.5 2.5 0 00-3.54-.52A2.5 2.5 0 0014.5 2z"/>
+                </svg>
+              }
+              @case ('database') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                </svg>
+              }
+              @case ('shield') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+              }
+              @case ('languages') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 8l6 6"/>
+                  <path d="M4 14l6-6 2-3"/>
+                  <path d="M2 5h12"/>
+                  <path d="M7 2h1"/>
+                  <path d="M22 22l-5-10-5 10"/>
+                  <path d="M14 18h6"/>
+                </svg>
+              }
+              @case ('heart') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/>
+                  <path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/>
+                </svg>
+              }
+              @case ('chart') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 3v18h18"/>
+                  <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+                </svg>
+              }
+            }
+          </div>
+          <h3 class="research-title">{{ axis.title }}</h3>
+          <p class="research-description">{{ axis.description }}</p>
+          <div class="research-tags">
+            @for (tag of axis.tags; track tag) {
+              <span class="research-tag">{{ tag }}</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ── CONFERENCE / EVENT ── -->
+<section class="section section-event" id="events">
+  <div class="container">
+    <div class="section-heading">
+      <p class="section-eyebrow">Vie scientifique</p>
+      <h2 class="section-title">Événements à venir</h2>
+      <p class="section-description">Retrouvez les prochains événements organisés par le laboratoire.</p>
+    </div>
+    @if (eventsLoading) {
+      <div class="event-empty">Chargement des prochains événements…</div>
+    } @else if (eventsError) {
+      <div class="event-empty">{{ eventsError }}</div>
+    } @else if (events.length) {
+      <div class="events-list">
+        @for (event of events; track event.id) {
+          <article class="event-card">
+            <div class="event-badge">{{ typeEvenementLabel(event.type) }}</div>
+            <div class="event-content">
+              <div class="event-info">
+                <h2 class="event-title">{{ event.titre }}</h2>
+                @if (event.edition) {
+                  <p class="event-subtitle">{{ event.edition }}</p>
+                }
+                @if (event.description) {
+                  <p class="event-description">{{ event.description }}</p>
+                }
+                <div class="event-meta">
+                  @if (event.dateDebut) {
+                    <div class="event-meta-item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                      <span>{{ event.dateDebut | date:'EEEE d MMMM yyyy, HH:mm':'':'fr-FR' }}</span>
+                    </div>
+                  }
+                  @if (event.lieu) {
+                    <div class="event-meta-item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      <span>{{ event.lieu }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="event-visual">
+                <div class="event-visual-inner">
+                  <div class="event-year">{{ event.dateDebut ? (event.dateDebut | date:'yyyy':'':'fr-FR') : currentYear }}</div>
+                  <div class="event-logo-text">{{ typeEvenementLabel(event.type) }}</div>
+                  @if (event.edition) {
+                    <div class="event-edition">{{ event.edition }}</div>
+                  }
+                </div>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="event-empty">Aucun événement à venir n’est actuellement publié.</div>
+    }
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer class="footer" id="footer">
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <img src="logo.png" alt="LIAS Logo" class="brand-img footer-brand-img">
+        </div>
+        <p class="footer-tagline">
+          Faculté des Sciences Ben M'Sik — Université Hassan II de Casablanca
+        </p>
+      </div>
+
+      <div class="footer-links-group">
+        <div class="footer-col">
+          <h4 class="footer-col-title">Direction</h4>
+          <p class="footer-text">Pr. Faouzia Benabbou — <em>Directrice</em></p>
+          <p class="footer-text">Pr. Abdessamad Belangour — <em>Vice-directeur</em></p>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Contact</h4>
+          <a href="https://lias.ma" target="_blank" rel="noopener" class="footer-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+            </svg>
+            lias.ma
+          </a>
+          <a href="mailto:lias.fsbm@gmail.com" class="footer-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            lias.fsbm&#64;gmail.com
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; {{ currentYear }} LIAS — Tous droits réservés.</p>
+      <a routerLink="/login" class="footer-login-link">
+        Accès Espace Membre
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,72 @@
+<section class="calendar-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Agenda du laboratoire</p>
+      <h1>Calendrier</h1>
+      <p class="subtitle">Événements scientifiques et réunions planifiées.</p>
+    </div>
+    <div class="month-navigation">
+      <button type="button" class="today-button" (click)="goToToday()">Aujourd’hui</button>
+      <button type="button" class="arrow-button" aria-label="Mois précédent" (click)="previousMonth()">‹</button>
+      <h2>{{ monthLabel }}</h2>
+      <button type="button" class="arrow-button" aria-label="Mois suivant" (click)="nextMonth()">›</button>
+    </div>
+  </header>
+
+  <div class="calendar-toolbar">
+    <label class="type-filter">
+      <span>Afficher</span>
+      <select [value]="filter" (change)="filter = $any($event.target).value; buildCalendarDays()">
+        @for (option of filters; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </label>
+    <label class="mine-filter">
+      <input type="checkbox" [checked]="onlyMine" (change)="onlyMine = $any($event.target).checked; buildCalendarDays()">
+      Mes événements
+    </label>
+    <div class="legend" aria-label="Légende des types">
+      <span><i class="dot conference"></i>Conférence</span>
+      <span><i class="dot seminar"></i>Séminaire</span>
+      <span><i class="dot workshop"></i>Workshop</span>
+      <span><i class="dot meeting"></i>Réunion</span>
+      <span><i class="dot cancelled"></i>Annulé</span>
+    </div>
+  </div>
+
+  @if (errorMessage) {
+    <div class="alert" role="alert">{{ errorMessage }}</div>
+  }
+
+  @if (isLoading) {
+    <div class="loading-state" role="status">Chargement du calendrier…</div>
+  } @else {
+    <div class="calendar-grid" role="grid" [attr.aria-label]="'Calendrier ' + monthLabel">
+      @for (weekday of weekdays; track weekday) {
+        <div class="weekday" role="columnheader">{{ weekday }}</div>
+      }
+      @for (day of calendarDays; track trackByDate($index, day)) {
+        <div class="day-cell" role="gridcell"
+          [class.outside-month]="!day.inCurrentMonth" [class.today]="day.isToday">
+          <span class="day-number">{{ day.date | date:'d' }}</span>
+          <div class="day-items">
+            @for (item of day.items; track trackByItem($index, item)) {
+              <button type="button" class="calendar-item" [ngClass]="itemClass(item)"
+                [class.struck]="item.annule || item.statut === 'ANNULEE'"
+                [title]="itemTime(item) + ' · ' + item.titre + (item.lieu ? ' · ' + item.lieu : '')"
+                (click)="openItem(item)">
+                <span class="item-time">{{ itemTime(item) }}</span>
+                <span class="item-title">{{ item.titre }}</span>
+                <span class="item-kind">{{ itemLabel(item) }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+    @if (filteredItems.length === 0) {
+      <p class="empty-hint">Aucun événement ou réunion pour ce mois et ces filtres.</p>
+    }
+  }
+</section>

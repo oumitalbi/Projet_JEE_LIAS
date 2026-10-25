@@ -1,0 +1,129 @@
+<section class="messaging-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Espace de collaboration</p>
+      <h1>Messagerie</h1>
+      <p class="subtitle">Échangez avec les membres, votre équipe ou les participants d’un événement.</p>
+    </div>
+    <span class="refresh-note">Actualisation automatique · 30 s</span>
+  </header>
+
+  @if (!canAccessMessaging) {
+    <div class="alert" role="status">{{ errorMessage || 'Vérification de vos droits de messagerie…' }}</div>
+  } @else {
+    <div class="messenger-layout">
+      <aside class="channel-panel">
+        <div class="channel-tabs">
+          <button type="button" [class.active]="channel === 'DIRECT'" (click)="selectChannel('DIRECT')">Direct</button>
+          @if (availableTeams.length) {
+            <button type="button" [class.active]="channel === 'EQUIPE'" (click)="selectChannel('EQUIPE')">Équipes</button>
+          }
+          <button type="button" [class.active]="channel === 'EVENEMENT'" (click)="selectChannel('EVENEMENT')">Événements</button>
+        </div>
+
+        @if (channel === 'DIRECT') {
+          <div class="channel-list">
+            <h2>Conversations</h2>
+            @for (conversation of conversations; track conversation.autreMembreId) {
+              <button type="button" class="channel-item"
+                [class.selected]="selectedContactId === conversation.autreMembreId"
+                (click)="openConversation(conversation)">
+                <span class="avatar">{{ conversation.autreMembrePrenom?.charAt(0) }}{{ conversation.autreMembreNom?.charAt(0) }}</span>
+                <span class="channel-copy">
+                  <strong>{{ conversation.autreMembrePrenom }} {{ conversation.autreMembreNom }}</strong>
+                  <small>{{ conversation.dernierMessage }}</small>
+                </span>
+                @if (conversation.nonLus > 0) { <span class="unread-badge">{{ conversation.nonLus }}</span> }
+              </button>
+            } @empty {
+              <p class="empty-hint">Aucune conversation directe.</p>
+            }
+          </div>
+        } @else if (channel === 'EQUIPE') {
+          <div class="channel-list">
+            <h2>Canaux d’équipe</h2>
+            @for (team of availableTeams; track team) {
+              <button class="channel-item" type="button" [class.selected]="selectedTeam === team" (click)="openTeam(team)">
+                <span class="team-avatar">#</span><span class="channel-copy"><strong>{{ team }}</strong><small>Discussion de l’équipe</small></span>
+              </button>
+            }
+            @if (!availableTeams.length) { <p class="empty-hint">Les canaux d’équipe sont réservés aux permanents et à la supervision.</p> }
+          </div>
+        } @else {
+          <div class="channel-list">
+            <h2>Discussions d’événement</h2>
+            @for (event of availableEvents; track event.id) {
+              <button class="channel-item" type="button" [class.selected]="selectedEventId === event.id" (click)="openEvent(event)">
+                <span class="team-avatar">◷</span><span class="channel-copy"><strong>{{ event.titre }}</strong><small>{{ event.dateDebut | date:'d MMM yyyy':'':'fr-FR' }}</small></span>
+              </button>
+            } @empty {
+              <p class="empty-hint">Aucune discussion d’événement accessible.</p>
+            }
+          </div>
+        }
+      </aside>
+
+      <section class="thread-panel">
+        <header class="thread-heading">
+          <div>
+            <span class="eyebrow">{{ channel === 'DIRECT' ? 'Message privé' : channel === 'EQUIPE' ? 'Canal d’équipe' : 'Événement' }}</span>
+            <h2>{{ threadTitle }}</h2>
+          </div>
+        </header>
+
+        @if (errorMessage) { <div class="alert thread-alert" role="alert">{{ errorMessage }}</div> }
+        <div class="thread-messages" aria-live="polite">
+          @if (isLoading) {
+            <div class="thread-empty">Chargement de la discussion…</div>
+          } @else if (!selectedContactId && !selectedTeam && !selectedEventId) {
+            <div class="thread-empty">Choisissez une conversation ou un canal.</div>
+          } @else if (!messages.length) {
+            <div class="thread-empty">Aucun message pour le moment. Commencez la conversation.</div>
+          } @else {
+            @for (message of messages; track trackMessage($index, message)) {
+              <article class="message-row" [class.mine]="isMine(message)">
+                <div class="message-bubble">
+                  <div class="message-meta">
+                    <strong>{{ message.expediteur?.prenom }} {{ message.expediteur?.nom }}</strong>
+                    <time>{{ message.dateEnvoi | date:'d MMM, HH:mm':'':'fr-FR' }}</time>
+                  </div>
+                  <p>{{ message.contenu }}</p>
+                </div>
+              </article>
+            }
+          }
+        </div>
+        <form class="composer" (ngSubmit)="send()">
+          <textarea name="draft" [(ngModel)]="draft" rows="2" maxlength="5000"
+            placeholder="Écrire un message…" [disabled]="isSending || (!selectedContactId && !selectedTeam && !selectedEventId)"></textarea>
+          <div class="composer-footer">
+            <span>{{ draft.length }}/5000</span>
+            <button type="submit" [disabled]="isSending || !draft.trim() || (!selectedContactId && !selectedTeam && !selectedEventId)">
+              {{ isSending ? 'Envoi…' : 'Envoyer' }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="details-panel">
+        @if (channel === 'DIRECT') {
+          <h2>Nouveau message</h2>
+          <p>Choisissez un membre actif pour démarrer une conversation directe.</p>
+          <select aria-label="Choisir un membre" [(ngModel)]="newRecipientId">
+            <option [ngValue]="null">Sélectionner un membre</option>
+            @for (member of availableRecipients; track member.id) {
+              <option [ngValue]="member.id">{{ member.prenom }} {{ member.nom }}</option>
+            }
+          </select>
+          <button type="button" class="start-button" (click)="startConversation()" [disabled]="!newRecipientId">Ouvrir la conversation</button>
+        } @else if (channel === 'EQUIPE') {
+          <h2>Règles du canal</h2>
+          <p>Les messages sont accessibles aux membres autorisés de l’équipe et à la supervision.</p>
+        } @else {
+          <h2>Accès à la discussion</h2>
+          <p>Réservé aux organisateurs, participants et membres de la supervision.</p>
+        }
+      </aside>
+    </div>
+  }
+</section>

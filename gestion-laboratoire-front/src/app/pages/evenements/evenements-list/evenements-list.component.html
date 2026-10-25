@@ -1,0 +1,348 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Événements</h1>
+      <p class="page-description">Consultez les événements scientifiques du laboratoire LIAS.</p>
+    </div>
+    <button *ngIf="canCreate" class="btn btn-primary" type="button" (click)="openForm()">
+      <span aria-hidden="true">＋</span>
+      Créer un événement
+    </button>
+  </div>
+
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label>Type d’événement :</label>
+      <div class="btn-group">
+        <button class="btn-filter" type="button" [class.active]="selectedType === 'TOUS'"
+                (click)="setTypeFilter('TOUS')">Tous</button>
+        <button *ngFor="let type of typesEvenement" class="btn-filter" type="button"
+                [class.active]="selectedType === type.value" (click)="setTypeFilter(type.value)">
+          {{ type.label }}
+        </button>
+      </div>
+    </div>
+
+    <div class="filter-selects">
+      <label>
+        Statut
+        <select class="form-control" [ngModel]="selectedStatut" (ngModelChange)="setStatutFilter($event)">
+          <option value="TOUS">Tous les statuts</option>
+          <option value="A_VENIR">À venir</option>
+          <option value="EN_COURS">En cours</option>
+          <option value="PASSE">Passés</option>
+          <option *ngIf="canViewCancelled" value="ANNULE">Annulés</option>
+        </select>
+      </label>
+      <label>
+        Année
+        <select class="form-control" [ngModel]="selectedAnnee" (ngModelChange)="setAnneeFilter($event)">
+          <option value="TOUTES">Toutes les années</option>
+          <option *ngFor="let annee of anneesDisponibles" [value]="annee">{{ annee }}</option>
+        </select>
+      </label>
+      <label *ngIf="editionsDisponibles.length">
+        Édition
+        <select class="form-control" [ngModel]="selectedEdition" (ngModelChange)="setEditionFilter($event)">
+          <option value="TOUTES">Toutes les éditions</option>
+          <option *ngFor="let edition of editionsDisponibles" [value]="edition">{{ edition }}</option>
+        </select>
+      </label>
+      <label *ngIf="currentUserId !== null" class="checkbox-filter">
+        <input type="checkbox" [ngModel]="mesEvenements" (ngModelChange)="setMesEvenements($event)">
+        Mes événements
+      </label>
+    </div>
+    <p *ngIf="selectedStatut === 'ANNULE'" class="api-notice">
+      Les événements annulés sont consultés depuis l’historique autorisé.
+    </p>
+  </div>
+
+  <div *ngIf="isLoading" class="loading-state" role="status">
+    <div class="spinner"></div>
+    <p>Chargement des événements...</p>
+  </div>
+
+  <div *ngIf="loadError && !isLoading" class="empty-state">
+    <h3>Impossible de charger les événements</h3>
+    <p>Vérifiez votre connexion ou vos droits puis réessayez.</p>
+    <button class="btn btn-secondary" type="button" (click)="loadEvenements()">Réessayer</button>
+  </div>
+
+  <div *ngIf="!isLoading && !loadError && evenements.length === 0" class="empty-state">
+    <h3>Aucun événement trouvé</h3>
+    <p>Aucun événement ne correspond à vos critères.</p>
+  </div>
+
+  <div *ngIf="!isLoading && !loadError && evenements.length > 0" class="evenements-grid">
+    <article *ngFor="let evenement of evenements" class="evenement-card" role="button" tabindex="0"
+             (click)="openDetail(evenement)" (keydown.enter)="openDetail(evenement)"
+             (keydown.space)="$event.preventDefault(); openDetail(evenement)">
+      <div class="card-header">
+        <div class="badge-group">
+          <span class="badge" [ngClass]="getTypeBadgeClass(evenement.type)">{{ getTypeLabel(evenement.type) }}</span>
+          <span class="badge" [ngClass]="getStatusBadgeClass(evenement.statut)">
+            {{ getStatusLabel(evenement.statut) }}
+          </span>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <h3 class="event-title" [title]="evenement.titre || 'Titre indisponible'">
+          {{ evenement.titre || 'Titre indisponible' }}
+        </h3>
+        <p *ngIf="evenement.lieu?.trim()" class="event-place">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"></path>
+            <circle cx="12" cy="10" r="2.5"></circle>
+          </svg>
+          {{ evenement.lieu }}
+        </p>
+        <p class="event-date">{{ getDateRange(evenement) }}</p>
+        <p *ngIf="evenement.edition?.trim()" class="event-edition">{{ evenement.edition }}</p>
+      </div>
+
+      <div class="card-footer">
+        <div class="authors-stack" [attr.aria-label]="'Organisateurs de ' + (evenement.titre || 'l’événement')">
+          <ng-container *ngIf="evenement.organisateurs?.length; else noOrganisateur">
+            <div *ngFor="let organisateur of evenement.organisateurs?.slice(0, 3)"
+                 class="author-avatar" [title]="getFullName(organisateur)">
+              {{ getInitials(organisateur) }}
+            </div>
+            <div *ngIf="(evenement.organisateurs?.length || 0) > 3" class="author-avatar more">
+              +{{ (evenement.organisateurs?.length || 0) - 3 }}
+            </div>
+          </ng-container>
+          <ng-template #noOrganisateur><span class="no-organizer">Aucun organisateur</span></ng-template>
+        </div>
+        <span class="detail-link">Détails <span aria-hidden="true">→</span></span>
+      </div>
+    </article>
+  </div>
+</div>
+
+<div class="modal-overlay" [class.show]="isDetailOpen" (click)="closeDetail()">
+  <section class="modal-content detail-panel" role="dialog" aria-modal="true"
+           aria-label="Détails de l’événement" (click)="$event.stopPropagation()"
+           [class.show-content]="isDetailOpen">
+    <div class="modal-header">
+      <h2>Détails de l’événement</h2>
+      <button class="close-btn" type="button" aria-label="Fermer" (click)="closeDetail()">×</button>
+    </div>
+
+    <div class="modal-body" *ngIf="selectedEvenement as evenement">
+      <div *ngIf="isDetailLoading" class="loading-state"><div class="spinner"></div><p>Chargement...</p></div>
+      <ng-container *ngIf="!isDetailLoading">
+        <div class="detail-header">
+          <div class="badge-group">
+            <span class="badge" [ngClass]="getTypeBadgeClass(evenement.type)">{{ getTypeLabel(evenement.type) }}</span>
+            <span class="badge" [ngClass]="getStatusBadgeClass(evenement.statut)">{{ getStatusLabel(evenement.statut) }}</span>
+          </div>
+          <h3 class="detail-title">{{ evenement.titre || 'Titre indisponible' }}</h3>
+          <p class="detail-date">{{ getLongDateRange(evenement) }}</p>
+        </div>
+
+        <div *ngIf="evenement.description?.trim()" class="detail-section">
+          <h4>Description</h4>
+          <p class="detail-text">{{ evenement.description }}</p>
+        </div>
+        <div *ngIf="evenement.lieu?.trim()" class="detail-section">
+          <h4>Lieu</h4>
+          <p class="detail-text">{{ evenement.lieu }}</p>
+        </div>
+        <div *ngIf="evenement.edition?.trim()" class="detail-section">
+          <h4>Édition</h4>
+          <p class="detail-text">{{ evenement.edition }}</p>
+        </div>
+        <div *ngIf="evenement.motifAnnulation?.trim()" class="detail-section">
+          <h4>Motif d’annulation</h4>
+          <p class="detail-text">{{ evenement.motifAnnulation }}</p>
+        </div>
+
+        <div class="detail-section">
+          <h4>Organisateurs ({{ evenement.organisateurs?.length || 0 }})</h4>
+          <div class="authors-list">
+            <div *ngFor="let organisateur of evenement.organisateurs" class="author-item">
+              <div class="user-info">
+                <div class="user-avatar">{{ getInitials(organisateur) }}</div>
+                <div class="user-details">
+                  <span class="user-name">{{ getFullName(organisateur) }}</span>
+                  <span *ngIf="organisateur.equipe" class="muted-text">{{ organisateur.equipe }}</span>
+                </div>
+              </div>
+            </div>
+            <p *ngIf="!evenement.organisateurs?.length">Aucun organisateur renseigné.</p>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Participants ({{ evenement.nbParticipants ?? evenement.participants?.length ?? 0 }})</h4>
+          <div class="authors-list">
+            <div *ngFor="let participant of evenement.participants" class="author-item">
+              <div class="user-info">
+                <div class="user-avatar">{{ getInitials(participant) }}</div>
+                <div class="user-details"><span class="user-name">{{ getFullName(participant) }}</span></div>
+              </div>
+            </div>
+            <p *ngIf="!evenement.participants?.length">Aucun participant inscrit.</p>
+          </div>
+        </div>
+
+        <div class="detail-actions">
+          <button *ngIf="canOpenDiscussion(evenement)" class="btn btn-secondary w-100"
+                  type="button" (click)="openDiscussion(evenement)">
+            Ouvrir la discussion
+          </button>
+          <button *ngIf="canRegister && evenement.statut !== 'ANNULE' && evenement.statut !== 'PASSE'"
+                  class="btn btn-primary w-100" type="button" (click)="toggleInscription()" [disabled]="isRegistering">
+            {{ isRegistering ? 'Mise à jour...' : evenement.estInscrit ? 'Se désinscrire' : 'S’inscrire' }}
+          </button>
+          <button *ngIf="evenement.peutModifier" class="btn btn-secondary w-100 action-spaced"
+                  type="button" (click)="startEdit()">Modifier</button>
+          <button *ngIf="evenement.peutModifier" class="btn btn-secondary w-100 action-spaced"
+                  type="button" (click)="startManageOrganisateurs()">Gérer les organisateurs</button>
+          <button *ngIf="evenement.peutAnnuler && evenement.statut !== 'ANNULE'"
+                  class="btn btn-danger w-100 action-spaced" type="button" (click)="beginAnnulation()">
+            Annuler l’événement
+          </button>
+
+          <div *ngIf="confirmerAnnulation" class="confirmation-box cancel-actions">
+            <label for="annulation-motif">Motif obligatoire</label>
+            <textarea id="annulation-motif" class="form-control" [(ngModel)]="motifAnnulation"
+                      [ngModelOptions]="{ standalone: true }" maxlength="1000"></textarea>
+            <div class="confirmation-buttons">
+              <button class="btn btn-secondary" type="button" (click)="confirmerAnnulation = false"
+                      [disabled]="isCancelling">Retour</button>
+              <button class="btn btn-danger" type="button" (click)="confirmAnnulation()"
+                      [disabled]="isCancelling || !motifAnnulation.trim()">
+                {{ isCancelling ? 'Annulation...' : 'Confirmer' }}
+              </button>
+            </div>
+          </div>
+          <p *ngIf="actionError" class="error-text">{{ actionError }}</p>
+        </div>
+
+        <div *ngIf="isManagingOrganisateurs" class="organizer-manager">
+          <h4>Gérer les organisateurs</h4>
+          <p class="muted-text">Un événement doit conserver au moins un organisateur.</p>
+          <div class="author-list-container">
+            <label *ngFor="let membre of filteredMembres" class="author-list-item">
+              <input type="checkbox" [checked]="managedOrganisateurIds.includes(membre.id)"
+                     (change)="toggleManagedOrganisateur(membre.id)">
+              <span class="user-avatar-sm">{{ getInitials(membre) }}</span>
+              <span>{{ getFullName(membre) }}</span>
+            </label>
+            <p *ngIf="filteredMembres.length === 0" class="empty-members">Aucun membre éligible trouvé.</p>
+          </div>
+          <p *ngIf="managedOrganisateurIds.length === 0" class="error-text">Sélectionnez au moins un organisateur.</p>
+          <p *ngIf="organizerManagerError" class="error-text">{{ organizerManagerError }}</p>
+          <div class="confirmation-buttons action-spaced">
+            <button class="btn btn-secondary" type="button" (click)="isManagingOrganisateurs = false"
+                    [disabled]="isSavingOrganisateurs">Retour</button>
+            <button class="btn btn-primary" type="button" (click)="saveOrganisateurManagement()"
+                    [disabled]="managedOrganisateurIds.length === 0 || isSavingOrganisateurs">
+              {{ isSavingOrganisateurs ? 'Enregistrement...' : 'Enregistrer' }}
+            </button>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </section>
+</div>
+
+<div class="modal-overlay form-overlay" [class.show]="isFormOpen" (click)="closeForm()">
+  <section class="modal-content form-panel" role="dialog" aria-modal="true"
+           [attr.aria-label]="modeForm === 'edit' ? 'Modifier un événement' : 'Créer un événement'"
+           (click)="$event.stopPropagation()" [class.show-content]="isFormOpen">
+    <div class="modal-header">
+      <h2>{{ modeForm === 'edit' ? 'Modifier l’événement' : 'Créer un événement' }}</h2>
+      <button class="close-btn" type="button" aria-label="Fermer" (click)="closeForm()" [disabled]="isSaving">×</button>
+    </div>
+
+    <form class="modal-body" [formGroup]="eventForm" (ngSubmit)="submitEvenement()">
+      <div class="form-group">
+        <label for="event-title">Titre *</label>
+        <input id="event-title" class="form-control" type="text" formControlName="titre" maxlength="200">
+        <small *ngIf="eventForm.get('titre')?.touched && eventForm.get('titre')?.invalid" class="error-text">Le titre est obligatoire (200 caractères maximum).</small>
+        <small *ngIf="fieldError('titre')" class="error-text">{{ fieldError('titre') }}</small>
+      </div>
+
+      <div class="form-group">
+        <label for="event-description">Description</label>
+        <textarea id="event-description" class="form-control" formControlName="description"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="event-type">Type *</label>
+        <select id="event-type" class="form-control" formControlName="type">
+          <option value="">Sélectionner un type</option>
+          <option *ngFor="let type of typesEvenement" [value]="type.value">{{ type.label }}</option>
+        </select>
+        <small *ngIf="eventForm.get('type')?.touched && eventForm.get('type')?.invalid" class="error-text">Le type est obligatoire.</small>
+        <small *ngIf="fieldError('type')" class="error-text">{{ fieldError('type') }}</small>
+      </div>
+
+      <div class="form-group">
+        <label for="event-start">Date de début *</label>
+        <input id="event-start" class="form-control" type="datetime-local" formControlName="dateDebut">
+        <small *ngIf="eventForm.get('dateDebut')?.touched && eventForm.get('dateDebut')?.invalid" class="error-text">La date de début est obligatoire.</small>
+        <small *ngIf="fieldError('dateDebut')" class="error-text">{{ fieldError('dateDebut') }}</small>
+      </div>
+
+      <div class="form-group">
+        <label for="event-end">Date de fin *</label>
+        <input id="event-end" class="form-control" type="datetime-local" formControlName="dateFin">
+        <small *ngIf="eventForm.get('dateFin')?.touched && eventForm.get('dateFin')?.invalid" class="error-text">La date de fin est obligatoire.</small>
+        <small *ngIf="eventForm.touched && eventForm.hasError('dateFinAvantDebut')" class="error-text">La date de fin doit être égale ou postérieure à la date de début.</small>
+        <small *ngIf="fieldError('dateFin')" class="error-text">{{ fieldError('dateFin') }}</small>
+      </div>
+
+      <div class="form-group">
+        <label for="event-place">Lieu *</label>
+        <input id="event-place" class="form-control" type="text" formControlName="lieu">
+        <small *ngIf="eventForm.get('lieu')?.touched && eventForm.get('lieu')?.invalid" class="error-text">Le lieu est obligatoire.</small>
+        <small *ngIf="fieldError('lieu')" class="error-text">{{ fieldError('lieu') }}</small>
+      </div>
+
+      <div class="form-group">
+        <label for="event-edition">Édition</label>
+        <input id="event-edition" class="form-control" type="text" formControlName="edition" placeholder="Ex. LIAS 2026">
+      </div>
+
+      <div class="form-group">
+        <label>Organisateurs * <span class="muted-text">(vous êtes sélectionné par défaut)</span></label>
+        <input class="form-control organizer-search" type="search" [(ngModel)]="organisateurSearch"
+               [ngModelOptions]="{ standalone: true }" placeholder="Rechercher un membre...">
+        <div class="author-list-container">
+          <label *ngFor="let membre of filteredMembres" class="author-list-item">
+            <input type="checkbox" [checked]="isOrganisateurSelected(membre.id)" (change)="toggleOrganisateur(membre.id)">
+            <span class="user-avatar-sm">{{ getInitials(membre) }}</span>
+            <span>{{ getFullName(membre) }}</span>
+          </label>
+          <p *ngIf="filteredMembres.length === 0" class="empty-members">Aucun membre éligible trouvé.</p>
+        </div>
+        <div class="selected-authors">
+          <span *ngFor="let organisateur of getSelectedOrganisateurs()" class="chip">
+            <span class="chip-avatar">{{ getInitials(organisateur) }}</span>
+            {{ getFullName(organisateur) }}
+            <button class="chip-remove" type="button" [attr.aria-label]="'Retirer ' + getFullName(organisateur)"
+                    (click)="removeOrganisateur(organisateur.id)">×</button>
+          </span>
+        </div>
+        <small *ngIf="selectedOrganisateurIds.length === 0" class="error-text">Sélectionnez au moins un organisateur.</small>
+        <small *ngIf="fieldError('organisateursIds')" class="error-text">{{ fieldError('organisateursIds') }}</small>
+      </div>
+
+      <p *ngIf="formError" class="error-text">{{ formError }}</p>
+      <div class="form-actions">
+        <button class="btn btn-secondary" type="button" (click)="closeForm()" [disabled]="isSaving">Fermer</button>
+        <button class="btn btn-primary" type="submit"
+                [disabled]="eventForm.invalid || selectedOrganisateurIds.length === 0 || isSaving">
+          {{ isSaving ? 'Enregistrement...' : modeForm === 'edit' ? 'Enregistrer les modifications' : 'Créer l’événement' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div *ngIf="showSuccessToast" class="success-toast" role="status">{{ successMessage }}</div>

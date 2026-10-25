@@ -1,0 +1,183 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     LIAS — Login Page
+     Espace Membre — Authentification
+     ═══════════════════════════════════════════════════════════════ -->
+
+<div class="login-page">
+  <!-- Background elements -->
+  <div class="login-bg">
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow--1"></div>
+    <div class="bg-glow bg-glow--2"></div>
+    <div class="bg-particles">
+      @for (i of [1,2,3,4,5,6]; track i) {
+        <div class="particle" [attr.data-index]="i"></div>
+      }
+    </div>
+  </div>
+
+  <!-- Login Card -->
+  <div class="login-card">
+    <!-- Card Header -->
+    <div class="card-header">
+      <a routerLink="/" class="back-link" id="login-back-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+        Retour à l'accueil
+      </a>
+
+      <div class="card-brand">
+        <img src="logo.png" alt="LIAS Logo" class="card-logo">
+      </div>
+
+      <h1 class="card-title">Espace Membre</h1>
+      <p class="card-subtitle">Veuillez vous identifier pour accéder à votre espace.</p>
+    </div>
+
+    <!-- Error Message -->
+    @if (errorMessage) {
+      <div class="alert alert-error" id="login-error-alert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        <span>{{ errorMessage }}</span>
+      </div>
+    }
+
+    <!-- Login Form -->
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form" id="login-form">
+
+      <!-- Email Field -->
+      <div class="form-group" [class.form-group--error]="f['email'].touched && f['email'].invalid">
+        <label for="login-email" class="form-label">Adresse email</label>
+        <div class="input-wrapper">
+          <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          <input
+            type="email"
+            id="login-email"
+            formControlName="email"
+            class="form-input"
+            placeholder="votre.email@université.ma"
+            autocomplete="email"
+          />
+        </div>
+        @if (f['email'].touched && f['email'].errors) {
+          <div class="form-error">
+            @if (f['email'].errors['required']) {
+              <span>L'adresse email est requise.</span>
+            } @else if (f['email'].errors['email']) {
+              <span>Veuillez saisir une adresse email valide.</span>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Password Field -->
+      <div class="form-group" [class.form-group--error]="f['password'].touched && f['password'].invalid">
+        <label for="login-password" class="form-label">Mot de passe</label>
+        <div class="input-wrapper">
+          <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0110 0v4"/>
+          </svg>
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            id="login-password"
+            formControlName="password"
+            class="form-input"
+            placeholder="••••••••"
+            autocomplete="current-password"
+          />
+          <button type="button" class="toggle-password" (click)="togglePassword()" id="toggle-password-btn">
+            @if (showPassword) {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            } @else {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            }
+          </button>
+        </div>
+        @if (f['password'].touched && f['password'].errors) {
+          <div class="form-error">
+            @if (f['password'].errors['required']) {
+              <span>Le mot de passe est requis.</span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="forgot-password">
+        <button type="button" class="forgot-password-link" (click)="toggleForgotPassword()">
+          {{ showForgotPassword ? 'Masquer' : 'Mot de passe oublié ?' }}
+        </button>
+        @if (showForgotPassword) {
+          <div class="forgot-password-panel">
+            <p>Un lien temporaire sera envoyé si cette adresse correspond à un compte actif.</p>
+            <button type="button" class="btn btn-submit forgot-submit"
+                    (click)="requestPasswordReset()" [disabled]="isForgotSubmitting">
+              {{ isForgotSubmitting ? 'Envoi en cours...' : 'Recevoir un lien de réinitialisation' }}
+            </button>
+            @if (forgotMessage) {
+              <p class="forgot-feedback" role="status">{{ forgotMessage }}</p>
+            }
+            @if (forgotError) {
+              <p class="forgot-feedback forgot-feedback--error" role="alert">{{ forgotError }}</p>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        class="btn btn-submit"
+        [disabled]="isLoading"
+        id="login-submit-btn"
+      >
+        @if (isLoading) {
+          <div class="spinner"></div>
+          <span>Connexion en cours...</span>
+        } @else {
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
+          <span>Se connecter</span>
+        }
+      </button>
+    </form>
+
+    <!-- Card Footer -->
+    <div class="card-footer">
+      <p class="card-footer-text">
+        Accès réservé aux membres du laboratoire LIAS.
+      </p>
+      <p class="card-footer-text">
+        Vous souhaitez rejoindre le laboratoire ?
+        <a routerLink="/demande-adhesion" class="help-link">Déposer une demande d’adhésion</a>
+      </p>
+      <p class="card-footer-help">
+        Problème de connexion ?
+        <a href="mailto:lias.fsbm@gmail.com" class="help-link">Contacter l'administration</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="login-bottom">
+    <span>&copy; {{ currentYear }} LIAS — Laboratoire d'Intelligence Artificielle et Systèmes</span>
+  </div>
+</div>

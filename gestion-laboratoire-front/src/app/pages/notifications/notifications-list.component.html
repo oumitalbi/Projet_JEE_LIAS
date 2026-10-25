@@ -1,0 +1,56 @@
+<section class="notifications-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Espace membre</p>
+      <h1>Mes notifications</h1>
+      <p class="subtitle">Suivez les informations et décisions qui vous concernent.</p>
+    </div>
+    <button class="primary-action" type="button" (click)="markAllRead()"
+      [disabled]="isUpdating || !notifications.some(item => !item.lue)">
+      {{ isUpdating ? 'Mise à jour…' : 'Tout marquer comme lu' }}
+    </button>
+  </header>
+
+  <div class="filters">
+    <label for="notification-filter">Filtrer par</label>
+    <select id="notification-filter" [ngModel]="filter" (ngModelChange)="setFilter($event)">
+      <option value="TOUTES">Toutes les notifications</option>
+      <option value="NON_LUES">Non lues uniquement</option>
+      <optgroup label="Type de notification">
+        @for (type of types; track type.value) {
+          <option [value]="type.value">{{ type.label }}</option>
+        }
+      </optgroup>
+    </select>
+  </div>
+
+  @if (errorMessage) {
+    <div class="alert" role="alert">{{ errorMessage }}</div>
+  }
+  @if (isLoading) {
+    <div class="state-card">Chargement des notifications…</div>
+  } @else if (filteredNotifications.length === 0) {
+    <div class="state-card">
+      <span class="empty-icon">✓</span>
+      <h2>Aucune notification</h2>
+      <p>Il n’y a rien à afficher pour ce filtre.</p>
+    </div>
+  } @else {
+    <div class="notification-list">
+      @for (notification of filteredNotifications; track trackById($index, notification)) {
+        <button class="notification-card" type="button" [class.unread]="!notification.lue"
+          (click)="openNotification(notification)">
+          <span class="notification-icon" [ngClass]="'type-' + notification.typeNotification.toLowerCase()">
+            {{ iconFor(notification.typeNotification) }}
+          </span>
+          <span class="notification-copy">
+            <span class="notification-title">{{ notification.titre }}</span>
+            <span class="notification-body">{{ notification.contenu || 'Aucun détail supplémentaire.' }}</span>
+            <span class="notification-date">{{ relativeDate(notification.dateCreation) }}</span>
+          </span>
+          <span class="read-state" [class.read]="notification.lue">{{ notification.lue ? 'Lue' : 'Non lue' }}</span>
+        </button>
+      }
+    </div>
+  }
+</section>

@@ -1,0 +1,227 @@
+<main class="logistics-page">
+  <header class="page-heading">
+    <div>
+      <span class="eyebrow">Ressources &amp; équipements</span>
+      <h1>Logistique</h1>
+      <p>Consultez le matériel, suivez vos demandes et les mouvements de stock.</p>
+    </div>
+    <div class="heading-actions" *ngIf="isDirector">
+      <button class="secondary-button" type="button" (click)="openArrivalForm()">＋ Enregistrer un arrivage</button>
+      <button class="primary-button" type="button" (click)="openMaterialForm()">＋ Ajouter du matériel</button>
+    </div>
+  </header>
+
+  <div *ngIf="errorMessage" class="notice error" role="alert">
+    {{ errorMessage }} <button type="button" (click)="errorMessage = ''" aria-label="Fermer">×</button>
+  </div>
+  <div *ngIf="successMessage" class="notice success" role="status">
+    {{ successMessage }} <button type="button" (click)="successMessage = ''" aria-label="Fermer">×</button>
+  </div>
+  <section *ngIf="!canAccess && !isLoading" class="empty-state access-denied">
+    <h2>Accès réservé</h2><p>Ce module est disponible pour les membres permanents et associés actifs du laboratoire.</p>
+  </section>
+
+  <nav *ngIf="canAccess" class="module-tabs" aria-label="Sections logistique">
+    <button type="button" [class.active]="activeTab === 'catalogue'" (click)="setTab('catalogue')">Catalogue <span>{{ materials.length }}</span></button>
+    <button type="button" [class.active]="activeTab === 'demandes'" (click)="setTab('demandes')">Mes demandes <span>{{ myRequests.length }}</span></button>
+    <button *ngIf="isDirector" type="button" [class.active]="activeTab === 'validation'" (click)="setTab('validation')">
+      Validation <span>{{ pendingCount }}</span>
+    </button>
+    <button *ngIf="isDirector" type="button" [class.active]="activeTab === 'historique'" (click)="setTab('historique')">Historique &amp; équité</button>
+  </nav>
+
+  <section *ngIf="canAccess && isLoading" class="loading-state"><span class="spinner"></span>Chargement des données logistiques…</section>
+
+  <ng-container *ngIf="canAccess && !isLoading && activeTab === 'catalogue'">
+    <div class="section-intro">
+      <div><span class="eyebrow">Inventaire du laboratoire</span><h2>Matériel disponible</h2></div>
+      <div class="catalogue-tools">
+        <p>Les quantités sont actualisées après chaque validation et retour.</p>
+        <button *ngIf="isDirector" type="button" class="text-button" (click)="toggleArchived()">
+          {{ showArchived ? 'Masquer les archives' : 'Afficher les archives' }}
+        </button>
+      </div>
+    </div>
+    <section *ngIf="materials.length; else noMaterials" class="material-grid">
+      <article class="material-card" *ngFor="let material of materials" [class.unavailable]="!material.disponible || material.archivee">
+        <div class="card-top">
+          <span class="category-badge">{{ material.categorie || 'Autre' }}</span>
+          <span class="stock-badge" [class.low]="material.quantiteDisponible < 3">
+            {{ material.archivee ? 'Archivé' : material.quantiteDisponible > 0 ? 'Disponible' : 'Épuisé' }}
+          </span>
+        </div>
+        <div class="material-symbol">▦</div>
+        <h3>{{ material.nom }}</h3>
+        <p class="material-description">{{ material.description || 'Aucune description supplémentaire.' }}</p>
+        <div class="inventory-meta">
+          <span>Inventaire <strong>{{ material.numeroInventaire }}</strong></span>
+          <span>Stock <strong>{{ material.quantiteDisponible }} / {{ material.quantiteTotale }}</strong></span>
+        </div>
+        <div class="material-kind">{{ material.consommable ? 'Consommable · pas de retour attendu' : 'Matériel prêté · retour attendu' }}</div>
+        <button *ngIf="canRequest && material.disponible && !material.archivee" type="button" class="request-button" (click)="openRequest(material)">
+          Demander ce matériel <span>→</span>
+        </button>
+        <div *ngIf="isDirector" class="material-admin-actions">
+          <button *ngIf="!material.archivee" type="button" class="text-button" (click)="openEditMaterial(material)">Modifier</button>
+          <button *ngIf="!material.archivee" type="button" class="text-button danger-link" (click)="archiveMaterial(material)">Archiver</button>
+          <button *ngIf="material.archivee" type="button" class="text-button" (click)="restoreMaterial(material)">Restaurer</button>
+        </div>
+      </article>
+    </section>
+    <ng-template #noMaterials><div class="empty-state"><h2>Aucun matériel au catalogue</h2><p>Le catalogue sera enrichi au fur et à mesure des acquisitions.</p></div></ng-template>
+    <button *ngIf="canRequest" type="button" class="special-request" (click)="openRequest(null)">＋ Soumettre un besoin hors catalogue</button>
+  </ng-container>
+
+  <ng-container *ngIf="canAccess && !isLoading && activeTab === 'demandes'">
+    <div class="section-intro">
+      <div><span class="eyebrow">Suivi personnel</span><h2>Mes demandes</h2></div>
+      <label class="status-filter">Statut
+        <select [(ngModel)]="filterStatus">
+          <option value="TOUS">Tous</option><option value="EN_ATTENTE">En attente</option>
+          <option value="VALIDEE">Validée</option><option value="REFUSEE">Refusée</option>
+          <option value="RETOURNEE">Retournée</option>
+        </select>
+      </label>
+    </div>
+    <section *ngIf="visibleRequests.length; else noRequests" class="request-list">
+      <article class="request-card" *ngFor="let request of visibleRequests">
+        <div class="request-status" [ngClass]="'status-' + request.statut.toLowerCase()">{{ statusLabel(request.statut) }}</div>
+        <div class="request-main">
+          <h3>{{ request.nomBesoin || request.materiel?.nom || 'Besoin hors catalogue' }}</h3>
+          <p>{{ request.motifDemande || request.descriptionBesoin }}</p>
+          <div class="request-meta">
+            <span>Quantité : <strong>{{ request.quantiteDemandee }}</strong></span>
+            <span *ngIf="request.dateDemande">Demandé le {{ request.dateDemande | date:'dd/MM/yyyy' }}</span>
+            <span *ngIf="request.traitePar">Traité par {{ request.traitePar.prenom }} {{ request.traitePar.nom }}</span>
+            <span *ngIf="request.dateRetour">Retourné le {{ request.dateRetour | date:'dd/MM/yyyy' }}</span>
+          </div>
+          <p *ngIf="request.motifRefus" class="refusal-reason"><strong>Motif du refus :</strong> {{ request.motifRefus }}</p>
+        </div>
+        <button *ngIf="request.peutRetourner" type="button" class="secondary-button" [disabled]="isSaving" (click)="returnMaterial(request)">Confirmer le retour</button>
+      </article>
+    </section>
+    <ng-template #noRequests><div class="empty-state"><h2>Aucune demande pour le moment</h2><p>Vous retrouverez ici le statut et l’historique de vos demandes.</p></div></ng-template>
+  </ng-container>
+
+  <ng-container *ngIf="canAccess && !isLoading && activeTab === 'validation' && isDirector">
+    <div class="section-intro"><div><span class="eyebrow">Décision de la direction</span><h2>File de validation</h2></div><p>La validation réserve le stock ; les demandes hors catalogue nécessitent le choix d’un matériel.</p></div>
+    <section *ngIf="queue.length; else noQueue" class="request-list">
+      <article class="request-card validation-card" *ngFor="let request of queue">
+        <div class="request-status" [ngClass]="'status-' + request.statut.toLowerCase()">{{ statusLabel(request.statut) }}</div>
+        <div class="request-main">
+          <h3>{{ request.nomBesoin || 'Besoin hors catalogue' }}</h3>
+          <p>{{ request.motifDemande || request.descriptionBesoin }}</p>
+          <div class="request-meta">
+            <span>Demandeur : <strong>{{ request.demandeur.prenom }} {{ request.demandeur.nom }}</strong></span>
+            <span>Équipe : <strong>{{ request.demandeur.equipe || 'Non renseignée' }}</strong></span>
+            <span>Quantité : <strong>{{ request.quantiteDemandee }}</strong></span>
+          </div>
+          <label *ngIf="request.statut === 'EN_ATTENTE' && !request.materiel" class="approval-select">
+            Matériel disponible à attribuer
+            <select [(ngModel)]="approvalMaterial[request.id]">
+              <option [ngValue]="null">Sélectionner un matériel</option>
+              <option *ngFor="let item of materials" [ngValue]="item.id" [disabled]="item.quantiteDisponible < request.quantiteDemandee || item.archivee">
+                {{ item.nom }} — stock {{ item.quantiteDisponible }}
+              </option>
+            </select>
+          </label>
+          <div *ngIf="rejectId === request.id" class="reject-form">
+            <label>Motif obligatoire
+              <textarea [(ngModel)]="rejectReason" maxlength="2000" rows="2"></textarea>
+            </label>
+            <button type="button" class="danger-button" [disabled]="!rejectReason.trim() || isSaving" (click)="refuse()">Confirmer le refus</button>
+            <button type="button" class="text-button" (click)="rejectId = null">Annuler</button>
+          </div>
+        </div>
+        <div *ngIf="request.statut === 'EN_ATTENTE'" class="decision-actions">
+          <button type="button" class="primary-button" [disabled]="isSaving || (!request.materiel && !approvalMaterial[request.id])" (click)="validate(request)">Valider</button>
+          <button type="button" class="danger-button" [disabled]="isSaving" (click)="startReject(request)">Refuser</button>
+        </div>
+      </article>
+    </section>
+    <ng-template #noQueue><div class="empty-state"><h2>Aucune demande enregistrée</h2><p>Les demandes reçues apparaîtront ici.</p></div></ng-template>
+  </ng-container>
+
+  <ng-container *ngIf="canAccess && !isLoading && activeTab === 'historique' && isDirector">
+    <div class="section-intro"><div><span class="eyebrow">Traçabilité des approvisionnements</span><h2>Arrivages &amp; distribution</h2></div><p>Indicateurs informatifs par équipe, sans quota automatique.</p></div>
+    <div class="history-grid">
+      <section class="history-panel">
+        <h3>Arrivages enregistrés</h3>
+        <div *ngIf="arrivals.length; else noArrivals" class="arrival-list">
+          <article *ngFor="let arrival of arrivals">
+            <div><strong>{{ arrival.materielNom }}</strong><small>{{ arrival.fournisseur || 'Fournisseur non précisé' }} <span *ngIf="arrival.bonLivraison">· BL {{ arrival.bonLivraison }}</span></small></div>
+            <div class="arrival-quantity">+{{ arrival.quantite }}<small>{{ arrival.dateArrivage | date:'dd/MM/yyyy' }}</small></div>
+          </article>
+        </div>
+        <ng-template #noArrivals><p class="muted">Aucun arrivage enregistré.</p></ng-template>
+      </section>
+      <section class="history-panel">
+        <h3>Suivi par membre</h3>
+        <p class="muted">Quantités reçues, y compris les personnes n’ayant encore rien reçu. Aucun quota automatique.</p>
+        <article *ngFor="let row of distribution" class="distribution-row">
+          <span><strong>{{ row.prenom }} {{ row.nom }}</strong><small>{{ row.equipe }}</small></span>
+          <strong>{{ row.quantiteDistribuee }} reçue(s)</strong>
+        </article>
+        <p *ngIf="!distribution.length" class="muted">Aucune distribution validée à ce jour.</p>
+      </section>
+    </div>
+    <section class="history-panel distribution-history">
+      <h3>Historique des demandes traitées</h3>
+      <p class="muted">Les décisions passées restent consultables et ne sont jamais supprimées.</p>
+      <article *ngFor="let request of queue" class="distribution-row" [hidden]="request.statut === 'EN_ATTENTE'">
+        <span>
+          <strong>{{ request.demandeur.prenom }} {{ request.demandeur.nom }} · {{ request.demandeur.equipe || 'Sans équipe' }}</strong>
+          <small>{{ request.nomBesoin || request.materiel?.nom }} · {{ request.quantiteDemandee }} unité(s)
+            <span *ngIf="request.dateReponse"> · traité le {{ request.dateReponse | date:'dd/MM/yyyy' }}</span>
+          </small>
+        </span>
+        <span class="request-status" [ngClass]="'status-' + request.statut.toLowerCase()">{{ statusLabel(request.statut) }}</span>
+      </article>
+      <p *ngIf="!queue.length" class="muted">Aucune demande traitée pour le moment.</p>
+    </section>
+  </ng-container>
+</main>
+
+<div class="modal-backdrop" *ngIf="requestOpen" (click)="requestOpen = false">
+  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="request-title" (click)="$event.stopPropagation()">
+    <button type="button" class="modal-close" (click)="requestOpen = false" aria-label="Fermer">×</button>
+    <span class="eyebrow">Nouvelle demande</span><h2 id="request-title">{{ selectedMaterial ? selectedMaterial.nom : 'Besoin hors catalogue' }}</h2>
+    <form [formGroup]="requestForm" (ngSubmit)="submitRequest()">
+      <label *ngIf="!selectedMaterial">Matériel souhaité <input formControlName="nomBesoin" maxlength="200" placeholder="Ex. écran externe" required></label>
+      <label>Quantité <input type="number" formControlName="quantite" min="1" required></label>
+      <label>Justification <textarea formControlName="justification" rows="4" maxlength="2000" placeholder="Précisez l’usage professionnel requis" required></textarea></label>
+      <p *ngIf="requestForm.get('justification')?.touched && requestForm.get('justification')?.invalid" class="field-error">La justification est obligatoire.</p>
+      <div class="modal-actions"><button type="button" class="text-button" (click)="requestOpen = false">Annuler</button><button class="primary-button" [disabled]="isSaving">{{ isSaving ? 'Envoi…' : 'Envoyer la demande' }}</button></div>
+    </form>
+  </section>
+</div>
+
+<div class="modal-backdrop" *ngIf="materialOpen" (click)="materialOpen = false">
+  <section class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="material-title" (click)="$event.stopPropagation()">
+    <button type="button" class="modal-close" (click)="materialOpen = false" aria-label="Fermer">×</button>
+    <span class="eyebrow">Inventaire LIAS</span><h2 id="material-title">{{ editingMaterialId ? 'Modifier le matériel' : 'Ajouter un matériel' }}</h2>
+    <form [formGroup]="materialForm" (ngSubmit)="addMaterial()" class="form-grid">
+      <label>Nom <input formControlName="nom" required></label><label>Catégorie <input formControlName="categorie" required placeholder="Informatique, audiovisuel…"></label>
+      <label>Numéro d’inventaire <input formControlName="numeroInventaire" required></label>
+      <label>État <select formControlName="etat"><option value="NEUF">Neuf</option><option value="BON_ETAT">Bon état</option><option value="USE">Usé</option><option value="EN_PANNE">En panne</option><option value="OBSOLETE">Obsolète</option></select></label>
+      <label>Quantité initiale <input type="number" min="1" formControlName="quantiteInitiale" required></label><label>Date d’acquisition <input type="date" formControlName="dateAcquisition"></label>
+      <label class="full-field">Description <textarea formControlName="description" rows="2"></textarea></label>
+      <label class="checkbox-field"><input type="checkbox" formControlName="consommable"> Consommable (pas de retour attendu)</label>
+      <div class="modal-actions full-field"><button type="button" class="text-button" (click)="materialOpen = false">Annuler</button><button class="primary-button" [disabled]="isSaving">{{ isSaving ? 'Enregistrement…' : editingMaterialId ? 'Enregistrer les modifications' : 'Ajouter au catalogue' }}</button></div>
+    </form>
+  </section>
+</div>
+
+<div class="modal-backdrop" *ngIf="arrivalOpen" (click)="arrivalOpen = false">
+  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="arrival-title" (click)="$event.stopPropagation()">
+    <button type="button" class="modal-close" (click)="arrivalOpen = false" aria-label="Fermer">×</button>
+    <span class="eyebrow">Entrée en stock</span><h2 id="arrival-title">Enregistrer un arrivage</h2>
+    <form [formGroup]="arrivalForm" (ngSubmit)="addArrival()">
+      <label>Matériel <select formControlName="materielId" required><option [ngValue]="null">Choisir…</option><option *ngFor="let item of materials" [ngValue]="item.id">{{ item.nom }} ({{ item.numeroInventaire }})</option></select></label>
+      <label>Quantité reçue <input type="number" min="1" formControlName="quantite" required></label>
+      <label>Date de l’arrivage <input type="date" formControlName="dateArrivage" required></label>
+      <label>Fournisseur <input formControlName="fournisseur"></label><label>Bon de livraison <input formControlName="bonLivraison"></label>
+      <div class="modal-actions"><button type="button" class="text-button" (click)="arrivalOpen = false">Annuler</button><button class="primary-button" [disabled]="isSaving">{{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}</button></div>
+    </form>
+  </section>
+</div>

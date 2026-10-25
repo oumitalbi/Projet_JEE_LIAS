@@ -1,0 +1,350 @@
+<div class="page-container">
+  <header class="page-header d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="page-title">Gouvernance &amp; mandats</h1>
+      <p class="page-description">Organigramme, responsabilités et mémoire institutionnelle du LIAS.</p>
+    </div>
+    @if (isManaging) {
+      <button class="btn btn-primary" type="button" (click)="openCreateForm()">+ Attribuer un mandat</button>
+    }
+  </header>
+
+  @if (errorMessage) {
+    <div class="alert alert-error" role="alert">
+      {{ errorMessage }}
+      <button type="button" aria-label="Fermer" (click)="errorMessage = ''">×</button>
+    </div>
+  }
+  @if (successMessage) {
+    <div class="alert alert-success" role="status">
+      {{ successMessage }}
+      <button type="button" aria-label="Fermer" (click)="successMessage = ''">×</button>
+    </div>
+  }
+
+  <section class="summary-row">
+    <article class="summary-card">
+      <span class="summary-label">Création du laboratoire</span>
+      <strong>{{ labCreationDate ? formatDate(labCreationDate) : 'Date à renseigner' }}</strong>
+    </article>
+    <article class="summary-card">
+      <span class="summary-label">Mandats actifs</span>
+      <strong>{{ activeMandateCount }}</strong>
+    </article>
+    <article class="summary-card">
+      <span class="summary-label">Membres référencés</span>
+      <strong>{{ membres.length }}</strong>
+    </article>
+  </section>
+
+  <section class="governance-section">
+    <div class="section-heading">
+      <div>
+        <h2>Organigramme actuel</h2>
+        <p>Mandats en vigueur selon leurs dates officielles.</p>
+      </div>
+    </div>
+    @if (organigramme.length) {
+      <div class="governance-grid">
+        @for (mandat of organigramme; track mandat.id) {
+          <button class="governance-card" type="button" (click)="openMemberHistory(getMemberFromMandate(mandat))">
+            <span class="avatar avatar-large">
+              @if (mandat.membre.photo) {
+                <img [src]="mandat.membre.photo" [alt]="getFullName(mandat.membre)" />
+              } @else {
+                {{ getInitials(mandat.membre) }}
+              }
+            </span>
+            <span class="governance-copy">
+              <span class="role-badge" [class.director]="mandat.responsabilite === 'DIRECTEUR'"
+                [class.deputy]="mandat.responsabilite === 'VICE_DIRECTEUR'"
+                [class.team-lead]="mandat.responsabilite === 'CHEF_EQUIPE'">
+                {{ roleLabel(mandat.responsabilite) }}
+              </span>
+              <strong>{{ getFullName(mandat.membre) }}</strong>
+              <span class="muted">{{ mandat.equipe ?? 'Direction du laboratoire' }}</span>
+              <small>Depuis le {{ formatDate(mandat.dateDebut) }}</small>
+            </span>
+          </button>
+        }
+      </div>
+    } @else if (!isLoading) {
+      <div class="empty-state">Aucun mandat en cours n’est enregistré.</div>
+    }
+  </section>
+
+  <section class="filters-bar">
+    <div class="filter-selects">
+      <label>
+        Fonction
+        <select class="form-control" [(ngModel)]="selectedRole" (ngModelChange)="onFilterChanged()">
+          <option value="TOUS">Toutes les fonctions</option>
+          @for (role of roles; track role.value) {
+            <option [value]="role.value">{{ role.label }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        Équipe
+        <select class="form-control" [(ngModel)]="selectedTeam" (ngModelChange)="onFilterChanged()">
+          <option value="TOUTES">Toutes les équipes</option>
+          @for (team of teams; track team) {
+            <option [value]="team">{{ team }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        Année de début
+        <select class="form-control" [(ngModel)]="selectedYear" (ngModelChange)="onFilterChanged()">
+          <option value="TOUTES">Toutes les années</option>
+          @for (year of years; track year) {
+            <option [value]="year">{{ year }}</option>
+          }
+        </select>
+      </label>
+    </div>
+  </section>
+
+  @if (isLoading) {
+    <div class="loading-state">Chargement des mandats…</div>
+  } @else if (filteredMandats.length) {
+    <section class="mandates-grid">
+      @for (mandat of filteredMandats; track mandat.id) {
+        <article class="mandate-card">
+          <button class="mandate-main" type="button" (click)="openMemberHistory(getMemberFromMandate(mandat))">
+            <div class="card-topline">
+              <span class="role-badge" [class.director]="mandat.responsabilite === 'DIRECTEUR'"
+                [class.deputy]="mandat.responsabilite === 'VICE_DIRECTEUR'"
+                [class.team-lead]="mandat.responsabilite === 'CHEF_EQUIPE'">
+                {{ roleLabel(mandat.responsabilite) }}
+              </span>
+              <span class="status-badge" [class.status-active]="mandat.actif"
+                [class.status-ended]="!mandat.actif">
+                {{ mandat.actif ? 'En cours' : 'Clôturé' }}
+              </span>
+            </div>
+            <div class="member-line">
+              <span class="avatar">
+                @if (mandat.membre.photo) {
+                  <img [src]="mandat.membre.photo" [alt]="getFullName(mandat.membre)" />
+                } @else {
+                  {{ getInitials(mandat.membre) }}
+                }
+              </span>
+              <div>
+                <strong>{{ getFullName(mandat.membre) }}</strong>
+                <span>{{ mandat.equipe ?? 'Direction du laboratoire' }}</span>
+              </div>
+            </div>
+            <div class="date-line">
+              <span>Début</span><strong>{{ formatDate(mandat.dateDebut) }}</strong>
+            </div>
+            <div class="date-line">
+              <span>Fin</span><strong>{{ mandat.dateFin ? formatDate(mandat.dateFin) : 'En cours' }}</strong>
+            </div>
+            @if (mandat.motifCloture) {
+              <p class="mandate-reason">{{ mandat.motifCloture }}</p>
+            }
+          </button>
+          @if (mandat.actif && isManaging) {
+            <div class="card-actions">
+              <button class="btn btn-secondary btn-small" type="button" (click)="openEditForm(mandat)">Corriger</button>
+              <button class="btn btn-danger btn-small" type="button" (click)="openCloseForm(mandat)">Clôturer</button>
+            </div>
+          }
+        </article>
+      }
+    </section>
+  } @else {
+    <div class="empty-state">Aucun mandat ne correspond à ces filtres.</div>
+  }
+</div>
+
+@if (isFormOpen) {
+  <div class="modal-backdrop" (click)="closeCreateForm()">
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="create-title" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div>
+          <h2 id="create-title">{{ editingMandat ? 'Corriger un mandat' : 'Attribuer un mandat' }}</h2>
+          <p>Un mandat clôturé reste consultable dans l’historique.</p>
+        </div>
+        <button class="icon-button" type="button" aria-label="Fermer" (click)="closeCreateForm()">×</button>
+      </header>
+      @if (errorMessage) { <div class="alert alert-error" role="alert">{{ errorMessage }}</div> }
+      <form [formGroup]="mandatForm" (ngSubmit)="saveMandat()">
+        <label class="field">
+          Fonction
+          <select class="form-control" formControlName="responsabilite">
+            @for (role of roles; track role.value) { <option [value]="role.value">{{ role.label }}</option> }
+          </select>
+        </label>
+        @if (mandatForm.get('responsabilite')?.value === 'CHEF_EQUIPE') {
+          <label class="field">
+            Équipe
+            <select class="form-control" formControlName="equipe">
+              <option [ngValue]="null">Choisir une équipe</option>
+              @for (team of teams; track team) { <option [value]="team">{{ team }}</option> }
+            </select>
+          </label>
+        }
+        <label class="field">
+          Titulaire
+          <select class="form-control" formControlName="membreId">
+            <option [ngValue]="null">Choisir un membre actif non doctorant</option>
+            @for (member of eligibleMembers; track member.id) {
+              <option [ngValue]="member.id">{{ member.prenom }} {{ member.nom }} — {{ member.equipeLaboratoire }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          Date de début
+          <input class="form-control" type="date" formControlName="dateDebut" [max]="todayIso()" />
+        </label>
+        <label class="field">
+          Description
+          <textarea class="form-control" rows="3" formControlName="description" maxlength="2000"></textarea>
+        </label>
+        @if (!editingMandat) {
+          <p class="form-note">Pour assurer la continuité, l’attribution clôt automatiquement le mandat précédent du même poste.</p>
+        }
+        <footer class="modal-actions">
+          <button class="btn btn-secondary" type="button" (click)="closeCreateForm()">Annuler</button>
+          <button class="btn btn-primary" type="submit" [disabled]="isSaving">
+            {{ isSaving ? 'Enregistrement…' : (editingMandat ? 'Enregistrer la correction' : 'Attribuer le mandat') }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (isCloseFormOpen) {
+  <div class="modal-backdrop" (click)="isCloseFormOpen = false">
+    <section class="modal-panel modal-panel--narrow" role="dialog" aria-modal="true" aria-labelledby="close-title" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div><h2 id="close-title">Clôturer le mandat</h2><p>{{ selectedMandat ? getFullName(selectedMandat.membre) : '' }}</p></div>
+        <button class="icon-button" type="button" aria-label="Fermer" (click)="isCloseFormOpen = false">×</button>
+      </header>
+      @if (errorMessage) { <div class="alert alert-error" role="alert">{{ errorMessage }}</div> }
+      <form [formGroup]="closeForm" (ngSubmit)="closeMandat()">
+        <label class="field">Date de fin
+          <input class="form-control" type="date" formControlName="dateFin" [min]="selectedMandat?.dateDebut" [max]="todayIso()" />
+        </label>
+        <label class="field">Motif de clôture
+          <textarea class="form-control" rows="3" formControlName="motif" maxlength="1000" required></textarea>
+        </label>
+        <footer class="modal-actions">
+          <button class="btn btn-secondary" type="button" (click)="isCloseFormOpen = false">Annuler</button>
+          <button class="btn btn-danger" type="submit" [disabled]="isSaving">
+            {{ isSaving ? 'Clôture…' : 'Confirmer la clôture' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (isDetailOpen && selectedMember) {
+  <div class="panel-overlay" (click)="closeDetail()">
+    <aside class="detail-panel" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <header class="detail-header">
+        <button class="icon-button" type="button" aria-label="Fermer le panneau" (click)="closeDetail()">×</button>
+        <div class="profile-heading">
+          <span class="avatar avatar-large">
+            @if (selectedMember.photo) { <img [src]="selectedMember.photo" [alt]="getFullName(selectedMember)" /> }
+            @else { {{ getInitials(selectedMember) }} }
+          </span>
+          <div><h2>{{ getFullName(selectedMember) }}</h2><p>{{ selectedMember.equipeLaboratoire }} · {{ selectedMember.statut }}</p></div>
+        </div>
+        @if (isManaging) {
+          <div class="lifecycle-actions">
+            @if (selectedMember.statut === 'RETRAITE' || selectedMember.statut === 'ANCIEN' || selectedMember.compteActif === false) {
+              <button class="btn btn-secondary btn-small" type="button" (click)="openLifecycle('REACTIVER', selectedMember)">Réactiver</button>
+            } @else {
+              <button class="btn btn-secondary btn-small" type="button" (click)="openLifecycle('RETRAITE', selectedMember)">Retraite</button>
+              <button class="btn btn-danger btn-small" type="button" (click)="openLifecycle('DESACTIVER', selectedMember)">Désactiver</button>
+            }
+          </div>
+        }
+      </header>
+      @if (isHistoryLoading) { <div class="loading-state">Chargement de l’historique…</div> }
+      <div class="detail-content">
+        <section class="history-section">
+          <h3>Mandats</h3>
+          @for (mandat of memberMandats; track mandat.id) {
+            <div class="timeline-item">
+              <span class="timeline-dot"></span>
+              <strong>{{ roleLabel(mandat.responsabilite) }}{{ mandat.equipe ? ' · ' + mandat.equipe : '' }}</strong>
+              <span>{{ formatDate(mandat.dateDebut) }} — {{ formatDate(mandat.dateFin) }}</span>
+              @if (mandat.motifCloture) { <small>{{ mandat.motifCloture }}</small> }
+            </div>
+          } @empty { <p class="muted">Aucun mandat historisé.</p> }
+        </section>
+        <section class="history-section">
+          <h3>Affiliations</h3>
+          @for (periode of affiliations; track periode.id) {
+            <div class="timeline-item">
+              <span class="timeline-dot timeline-dot--cyan"></span>
+              <strong>{{ periode.statut }}</strong>
+              <span>{{ formatDate(periode.dateDebut) }} — {{ formatDate(periode.dateFin) }}</span>
+              @if (periode.motif) { <small>{{ periode.motif }}</small> }
+            </div>
+          } @empty { <p class="muted">Aucune période d’affiliation.</p> }
+        </section>
+        <section class="history-section">
+          <h3>Historique des rôles</h3>
+          @for (entry of roleHistory; track entry.id) {
+            <div class="timeline-item">
+              <span class="timeline-dot timeline-dot--navy"></span>
+              <strong>{{ entry.ancienRole ?? 'Nouveau membre' }} → {{ entry.nouveauRole }}</strong>
+              <span>{{ formatDate(entry.dateChangement.slice(0, 10)) }}</span>
+              @if (entry.motif) { <small>{{ entry.motif }}</small> }
+            </div>
+          } @empty { <p class="muted">Aucun changement de rôle historisé.</p> }
+        </section>
+        <section class="history-section">
+          <h3>Modifications du profil</h3>
+          @for (entry of profileHistory; track entry.id) {
+            <div class="timeline-item">
+              <span class="timeline-dot timeline-dot--cyan"></span>
+              <strong>{{ entry.action }}</strong>
+              <span>{{ formatDate(entry.dateAction.slice(0, 10)) }} · {{ entry.auteur ?? 'Auteur non renseigné' }}</span>
+              @if (entry.details) { <small>{{ entry.details }}</small> }
+            </div>
+          } @empty { <p class="muted">Aucune modification historisée.</p> }
+        </section>
+      </div>
+    </aside>
+  </div>
+}
+
+@if (isLifecycleOpen && selectedMember) {
+  <div class="modal-backdrop" (click)="isLifecycleOpen = false">
+    <section class="modal-panel modal-panel--narrow" role="dialog" aria-modal="true" aria-labelledby="lifecycle-title" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div><h2 id="lifecycle-title">Cycle de vie du membre</h2><p>{{ getFullName(selectedMember) }}</p></div>
+        <button class="icon-button" type="button" aria-label="Fermer" (click)="isLifecycleOpen = false">×</button>
+      </header>
+      @if (errorMessage) { <div class="alert alert-error" role="alert">{{ errorMessage }}</div> }
+      @if (lifecycleAction === 'REACTIVER') {
+        <label class="field">Statut au retour
+          <select class="form-control" [(ngModel)]="reactivationStatus">
+            <option value="PERMANENT">Permanent</option>
+            <option value="ASSOCIE">Associé</option>
+          </select>
+        </label>
+      } @else {
+        <p class="form-note">
+          @if (lifecycleAction === 'RETRAITE') { Le compte sera gelé et les affiliations ainsi que mandats seront conservés. }
+          @else { Le membre sera marqué comme ancien. Les données historiques ne seront pas supprimées. }
+        </p>
+      }
+      <footer class="modal-actions">
+        <button class="btn btn-secondary" type="button" (click)="isLifecycleOpen = false">Annuler</button>
+        <button class="btn btn-primary" type="button" (click)="confirmLifecycle()" [disabled]="isSaving">
+          {{ isSaving ? 'Mise à jour…' : 'Confirmer' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}

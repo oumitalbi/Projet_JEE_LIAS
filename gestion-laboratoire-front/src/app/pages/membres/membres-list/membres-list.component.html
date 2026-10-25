@@ -1,0 +1,134 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title">Membres du Laboratoire</h1>
+    <p class="page-description">Consultez et gérez la liste des membres du laboratoire LIAS.</p>
+  </div>
+
+  <div class="table-card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nom complet</th>
+            <th>Email</th>
+            <th>Rôle</th>
+            <th>Statut</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let membre of membres" (click)="openModal(membre)" class="clickable-row">
+            <td>
+              <div class="user-info">
+                <div class="user-avatar">{{ membre.prenom?.charAt(0) }}{{ membre.nom?.charAt(0) }}</div>
+                <div class="user-details">
+                  <span class="user-name">{{ membre.prenom }} {{ membre.nom }}</span>
+                </div>
+              </div>
+            </td>
+            <td><span class="text-muted">{{ membre.email }}</span></td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-blue': membre.role === 'DIRECTEUR' || membre.role === 'Directeur',
+                'badge-purple': membre.role === 'CHERCHEUR' || membre.role === 'Chercheur',
+                'badge-gray': membre.role !== 'DIRECTEUR' && membre.role !== 'Directeur' && membre.role !== 'CHERCHEUR' && membre.role !== 'Chercheur'
+              }">
+                {{ membre.role }}
+              </span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-green': membre.statut === 'ACTIF' || membre.statut === 'Permanent' || membre.statut === 'Actif',
+                'badge-orange': membre.statut === 'DOCTORANT' || membre.statut === 'Doctorant',
+                'badge-gray': membre.statut === 'RETRAITE' || membre.statut === 'Retraité'
+              }">
+                {{ membre.statut }}
+              </span>
+            </td>
+            <td class="text-right">
+              <button class="btn-icon" title="Voir les détails">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="membres.length === 0">
+            <td colspan="5" class="empty-state">
+              Aucun membre trouvé.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal / Side-panel -->
+<div class="modal-overlay" [class.show]="isModalOpen" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()" [class.show-content]="isModalOpen">
+    <div class="modal-header">
+      <h2>Profil du membre</h2>
+      <button class="close-btn" (click)="closeModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="modal-body" *ngIf="selectedMembre">
+      <div class="profile-header">
+        <div class="profile-avatar-large">
+          {{ selectedMembre.prenom?.charAt(0) }}{{ selectedMembre.nom?.charAt(0) }}
+        </div>
+        <h3 class="profile-name">{{ selectedMembre.prenom }} {{ selectedMembre.nom }}</h3>
+        <p class="profile-role text-muted">{{ selectedMembre.role }}</p>
+      </div>
+
+      <button *ngIf="canManageRoles" class="btn-manage-role" type="button" (click)="openGovernance()">
+        Gérer les rôles et mandats dans Gouvernance
+      </button>
+      
+      <div class="profile-details">
+        <div class="detail-group">
+          <label>Équipe de recherche</label>
+          <div class="detail-value">
+            <span class="badge badge-purple">{{ selectedMembre.equipeLaboratoire }}</span>
+          </div>
+        </div>
+        
+        <div class="detail-group">
+          <label>Statut</label>
+          <div class="detail-value">
+            <span class="badge badge-green">{{ selectedMembre.statut }}</span>
+          </div>
+        </div>
+        
+        <div class="detail-group">
+          <label>Email professionnel</label>
+          <div class="detail-value">
+            <a href="mailto:{{ selectedMembre.email }}" class="email-link">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              {{ selectedMembre.email }}
+            </a>
+          </div>
+        </div>
+
+        <div *ngIf="canSendResetLink" class="security-actions">
+          <h4>Sécurité du compte</h4>
+          <p>Envoyer au membre un lien temporaire pour définir un nouveau mot de passe.</p>
+          <button class="btn-reset-link" type="button" (click)="sendResetLink()" [disabled]="isSendingResetLink">
+            {{ isSendingResetLink ? 'Envoi en cours...' : 'Envoyer un lien de réinitialisation' }}
+          </button>
+          <p *ngIf="resetLinkMessage" class="reset-feedback" role="status">{{ resetLinkMessage }}</p>
+          <p *ngIf="resetLinkError" class="reset-feedback reset-feedback--error" role="alert">{{ resetLinkError }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

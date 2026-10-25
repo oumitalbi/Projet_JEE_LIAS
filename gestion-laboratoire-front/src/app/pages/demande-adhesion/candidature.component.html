@@ -1,0 +1,86 @@
+<main class="application-page">
+  <a class="back-link" routerLink="/">← Retour à l’accueil LIAS</a>
+
+  @if (receipt; as confirmation) {
+    <section class="application-card confirmation" role="status">
+      <span class="confirmation-icon">✓</span>
+      <p class="eyebrow">Candidature transmise</p>
+      <h1>Merci pour votre intérêt.</h1>
+      <p>{{ confirmation.message }}</p>
+      <p class="receipt-date">Référence {{ confirmation.id }} · {{ confirmation.dateDemande | date:'longDate' }}</p>
+      <a routerLink="/login" class="button button-secondary">Retour à la connexion</a>
+    </section>
+  } @else {
+    <section class="application-card">
+      <p class="eyebrow">Rejoindre le laboratoire</p>
+      <h1>Demande d’adhésion</h1>
+      <p class="intro">Complétez le formulaire. Votre candidature et votre CV seront consultés uniquement par la direction du laboratoire.</p>
+
+      @if (errorMessage) {
+        <div class="alert" role="alert">{{ errorMessage }}</div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="soumettre()" novalidate>
+        <div class="form-grid">
+          <label>Nom *
+            <input formControlName="nom" autocomplete="family-name">
+            @if (form.controls.nom.touched && form.controls.nom.invalid) { <small>Le nom est obligatoire.</small> }
+          </label>
+          <label>Prénom *
+            <input formControlName="prenom" autocomplete="given-name">
+            @if (form.controls.prenom.touched && form.controls.prenom.invalid) { <small>Le prénom est obligatoire.</small> }
+          </label>
+          <label class="span-two">Adresse e-mail *
+            <input type="email" formControlName="email" autocomplete="email">
+            @if (form.controls.email.touched && form.controls.email.invalid) { <small>Une adresse e-mail valide est requise.</small> }
+          </label>
+          <label>Statut souhaité *
+            <select formControlName="statutSouhaite">
+              @for (statut of statuts; track statut.value) { <option [value]="statut.value">{{ statut.label }}</option> }
+            </select>
+          </label>
+          <label>Équipe souhaitée *
+            <select formControlName="equipeSouhaitee">
+              @for (equipe of equipes; track equipe) { <option [value]="equipe">{{ equipe }}</option> }
+            </select>
+          </label>
+          <label class="span-two">Établissement d’origine *
+            <input formControlName="etablissementOrigine">
+          </label>
+          <label class="span-two">Laboratoire d’origine
+            <input formControlName="laboratoireOrigine">
+          </label>
+          <label class="span-two">Biographie
+            <textarea rows="3" formControlName="biographie"></textarea>
+          </label>
+          <label class="span-two">Centres d’intérêt scientifiques
+            <textarea rows="2" formControlName="centresInteret"></textarea>
+          </label>
+          <label class="span-two">Motivation * <span class="hint">(50 caractères minimum)</span>
+            <textarea rows="6" formControlName="lettreMotivation"></textarea>
+            @if (form.controls.lettreMotivation.touched && form.controls.lettreMotivation.invalid) {
+              <small>La motivation doit comporter au moins 50 caractères.</small>
+            }
+          </label>
+          <label class="span-two file-field">CV en PDF * <span class="hint">(5 Mo maximum)</span>
+            <input type="file" accept="application/pdf,.pdf" (change)="onCvSelected($event)">
+            @if (cv) { <span class="file-name">{{ cv.name }}</span> }
+          </label>
+        </div>
+
+        <label class="consent">
+          <input type="checkbox" formControlName="consentementDonnees">
+          <span>J’accepte que les informations et le CV transmis soient traités par LIAS pour étudier ma candidature. *</span>
+        </label>
+        @if (form.controls.consentementDonnees.touched && form.controls.consentementDonnees.invalid) {
+          <small class="consent-error">Le consentement est nécessaire pour transmettre la candidature.</small>
+        }
+        <label class="website-field" aria-hidden="true">Ne pas remplir <input formControlName="website" tabindex="-1" autocomplete="off"></label>
+
+        <button type="submit" class="button button-primary" [disabled]="isLoading">
+          {{ isLoading ? 'Envoi en cours…' : 'Transmettre ma candidature' }}
+        </button>
+      </form>
+    </section>
+  }
+</main>

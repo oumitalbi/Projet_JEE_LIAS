@@ -1,0 +1,289 @@
+<div class="page-container">
+  <div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="page-title">Publications</h1>
+      <p class="page-description">Consultez et gérez les publications scientifiques du laboratoire LIAS.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openForm()">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Ajouter une publication
+    </button>
+  </div>
+
+  <div class="filters-bar mb-4">
+    <div class="filter-group">
+      <label>Filtrer par équipe :</label>
+      <div class="btn-group">
+        <button *ngFor="let eq of equipes" 
+                class="btn-filter" 
+                [class.active]="activeFilter === eq"
+                (click)="filterByEquipe(eq)">
+          {{ eq }}
+        </button>
+      </div>
+    </div>
+    <div class="filter-selects">
+      <label>
+        Année
+        <select class="form-control" [ngModel]="selectedYear" (ngModelChange)="filterByYear($event)">
+          <option value="TOUTES">Toutes les années</option>
+          <option *ngFor="let year of years" [value]="year">{{ year }}</option>
+        </select>
+      </label>
+      <label>
+        Auteur
+        <select class="form-control" [ngModel]="selectedAuteurId" (ngModelChange)="filterByAuteur($event)">
+          <option value="TOUS">Tous les auteurs</option>
+          <option *ngFor="let membre of membres" [value]="membre.id">{{ getFullName(membre) }}</option>
+        </select>
+      </label>
+      <button *ngIf="canViewArchives()" class="btn-filter archive-toggle" [class.active]="showArchived" (click)="toggleArchived()">
+        {{ showArchived ? 'Publications actives' : 'Publications archivées' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Chargement des publications...</p>
+  </div>
+
+  <div *ngIf="!isLoading && publications.length === 0" class="empty-state">
+    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-3 text-muted">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="16" y1="13" x2="8" y2="13"></line>
+      <line x1="16" y1="17" x2="8" y2="17"></line>
+      <polyline points="10 9 9 9 8 9"></polyline>
+    </svg>
+    <h3>Aucune publication trouvée</h3>
+    <p>Aucune publication ne correspond à vos critères de recherche.</p>
+  </div>
+
+  <div *ngIf="!isLoading && publications.length > 0" class="publications-grid">
+    <div *ngFor="let pub of publications" class="publication-card" (click)="openDetail(pub)">
+      <div class="card-header">
+        <span class="badge" [ngClass]="getBadgeClass(pub.type)">{{ getLabel(pub.type) }}</span>
+        <span class="pub-year">{{ getYear(pub.datePublication) }}</span>
+      </div>
+      
+      <div class="card-body">
+        <h3 class="pub-title" [title]="pub.titre">{{ truncate(pub.titre, 100) }}</h3>
+        <p class="pub-resume">{{ truncate(pub.resume, 120) }}</p>
+      </div>
+      
+      <div class="card-footer">
+        <div class="authors-stack">
+          <div *ngFor="let auteur of pub.auteurs | slice:0:3" 
+               class="author-avatar" 
+               [title]="getFullName(auteur)">
+            {{ getInitials(auteur) }}
+          </div>
+          <div *ngIf="pub.auteurs && pub.auteurs.length > 3" class="author-avatar more">
+            +{{ pub.auteurs.length - 3 }}
+          </div>
+        </div>
+        
+        <a *ngIf="pub.lienDoi" [href]="pub.lienDoi" target="_blank" rel="noopener" class="doi-link" (click)="$event.stopPropagation()" title="Ouvrir le DOI">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Détail Publication (Slide-in) -->
+<div class="modal-overlay" [class.show]="isDetailOpen" (click)="closeDetail()">
+  <div class="modal-content detail-panel" (click)="$event.stopPropagation()" [class.show-content]="isDetailOpen">
+    <div class="modal-header">
+      <h2>Détails de la publication</h2>
+      <button class="close-btn" (click)="closeDetail()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="modal-body" *ngIf="selectedPublication">
+      <div class="detail-header mb-4">
+        <span class="badge mb-2" [ngClass]="getBadgeClass(selectedPublication.type)">{{ getLabel(selectedPublication.type) }}</span>
+        <h3 class="detail-title">{{ selectedPublication.titre }}</h3>
+        <p class="detail-date text-muted">Publié le {{ formatDateLong(selectedPublication.datePublication) }}</p>
+      </div>
+
+      <div class="detail-section mb-4">
+        <h4>Résumé</h4>
+        <p class="detail-text">{{ selectedPublication.resume }}</p>
+      </div>
+
+      <div class="detail-section mb-4" *ngIf="selectedPublication.lienDoi">
+        <h4>Lien / DOI</h4>
+        <a [href]="selectedPublication.lienDoi" target="_blank" rel="noopener" class="btn-outline-cyan w-100 mt-2 d-flex justify-content-center align-items-center">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          <span style="margin-left: 8px;">Consulter la source</span>
+        </a>
+      </div>
+
+      <div class="detail-section mb-4">
+        <h4>Auteurs ({{ selectedPublication.auteurs?.length || 0 }})</h4>
+        <div class="authors-list mt-3">
+          <div *ngFor="let auteur of selectedPublication.auteurs" class="author-item">
+            <div class="user-info">
+              <div class="user-avatar">{{ getInitials(auteur) }}</div>
+              <div class="user-details">
+                <span class="user-name">{{ getFullName(auteur) }}</span>
+                <span class="badge badge-purple badge-sm mt-1" *ngIf="auteur.equipeLaboratoire && auteur.equipeLaboratoire !== 'AUCUNE'">{{ auteur.equipeLaboratoire }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="detail-actions mt-auto pt-4 border-top" *ngIf="canArchive(selectedPublication)">
+        <button class="btn btn-danger w-100" (click)="confirmArchive(selectedPublication.id)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+          </svg>
+          {{ showArchived ? 'Désarchiver la publication' : 'Archiver la publication' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmation Archivage -->
+<div class="modal-overlay" [class.show]="showConfirmArchive" style="align-items: center; justify-content: center;">
+  <div class="modal-content confirmation-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Confirmer l'action</h2>
+      <button class="close-btn" (click)="cancelArchive()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="modal-body text-center py-4">
+      <div class="warning-icon mb-3">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+      <p *ngIf="!showArchived">Êtes-vous sûr de vouloir archiver cette publication ? Elle ne sera plus visible dans la liste active.</p>
+      <p *ngIf="showArchived">Êtes-vous sûr de vouloir désarchiver cette publication ? Elle réapparaîtra dans la liste active.</p>
+    </div>
+    <div class="modal-footer d-flex justify-content-end gap-2 p-3 border-top">
+      <button class="btn btn-secondary" (click)="cancelArchive()">Annuler</button>
+      <button class="btn btn-danger" (click)="doArchive()">Oui, confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ajout Publication -->
+<div class="modal-overlay" [class.show]="isFormOpen" (click)="closeForm()">
+  <div class="modal-content form-panel" (click)="$event.stopPropagation()" [class.show-content]="isFormOpen">
+    <div class="modal-header">
+      <h2>Ajouter une publication</h2>
+      <button class="close-btn" (click)="closeForm()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <form [formGroup]="pubForm" (ngSubmit)="submitPublication()">
+        
+        <div class="form-group mb-3">
+          <label>Type de publication <span class="text-danger">*</span></label>
+          <select class="form-control" formControlName="type">
+            <option value="" disabled selected>Sélectionner un type...</option>
+            <option *ngFor="let opt of typeOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-3">
+          <label>Titre de la publication <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" formControlName="titre" placeholder="Saisir le titre complet">
+        </div>
+
+        <div class="form-group mb-3">
+          <label>Résumé (Abstract) <span class="text-danger">*</span></label>
+          <textarea class="form-control" formControlName="resume" rows="4" placeholder="Résumé de la publication..."></textarea>
+        </div>
+
+        <div class="form-row mb-3 d-flex gap-3">
+          <div class="form-group flex-1">
+            <label>Date de publication <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" formControlName="datePublication">
+          </div>
+          <div class="form-group flex-2">
+            <label>Lien DOI / URL <span class="text-danger">*</span></label>
+            <input type="url" class="form-control" formControlName="lienDoi" placeholder="https://doi.org/10...">
+          </div>
+        </div>
+
+        <div class="form-group mb-4">
+          <label>Auteurs LIAS <span class="text-danger">*</span></label>
+          
+          <div class="selected-authors mb-2" *ngIf="selectedAuteurIds.length > 0">
+            <div class="chip" *ngFor="let auteur of getSelectedAuteurs()">
+              <div class="chip-avatar">{{ getInitials(auteur) }}</div>
+              <span>{{ getFullName(auteur) }}</span>
+              <button type="button" class="chip-remove" (click)="removeAuteur(auteur.id!)" *ngIf="auteur.id?.toString() !== ('' + currentUserId)">×</button>
+            </div>
+          </div>
+          
+          <div class="author-selector">
+            <input type="text" class="form-control mb-2" placeholder="Rechercher un membre..." [(ngModel)]="auteurSearch" [ngModelOptions]="{standalone: true}">
+            <div class="author-list-container">
+              <div class="author-list-item" *ngFor="let membre of filteredMembres" (click)="toggleAuteur(membre.id!)">
+                <input type="checkbox" [checked]="isAuteurSelected(membre.id!)" (click)="$event.stopPropagation(); toggleAuteur(membre.id!)">
+                <div class="user-avatar-sm">{{ getInitials(membre) }}</div>
+                <span>{{ getFullName(membre) }}</span>
+              </div>
+              <div *ngIf="filteredMembres.length === 0" class="p-2 text-muted text-center text-sm">Aucun membre trouvé.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions mt-4 pt-3 border-top">
+          <button type="button" class="btn btn-secondary w-100 mb-2" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn btn-primary w-100" [disabled]="pubForm.invalid || selectedAuteurIds.length === 0 || isSaving">
+            <span *ngIf="!isSaving">Publier</span>
+            <span *ngIf="isSaving" class="d-flex align-items-center justify-content-center">
+              <div class="spinner-sm mr-2"></div> Création en cours...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Success -->
+<div class="toast-notification" [class.show]="showSuccessToast">
+  <div class="toast-icon">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+  </div>
+  <div class="toast-content">
+    <p class="toast-title">Succès</p>
+    <p class="toast-message">La publication a été enregistrée avec succès.</p>
+  </div>
+</div>

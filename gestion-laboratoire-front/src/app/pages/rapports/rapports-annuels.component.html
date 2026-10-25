@@ -1,0 +1,116 @@
+<main class="reports-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Pilotage du laboratoire</p>
+      <h1>Rapports annuels</h1>
+      <p class="subtitle">Synthèse des activités et indicateurs pour la préparation budgétaire.</p>
+    </div>
+    <div class="generate-box">
+      <label for="report-year">Année</label>
+      <input id="report-year" type="number" min="2000" [max]="currentYear" [(ngModel)]="year"
+        [ngModelOptions]="{standalone: true}" />
+      <button type="button" class="primary-button" (click)="generateReport()" [disabled]="isLoading">
+        {{ isLoading ? 'Génération…' : 'Générer le rapport' }}
+      </button>
+    </div>
+  </header>
+
+  @if (errorMessage) {
+    <div class="alert" role="alert">{{ errorMessage }}</div>
+  }
+
+  @if (isLoading && !report) {
+    <div class="state-card">Génération et archivage du rapport en cours…</div>
+  } @else if (report) {
+    <section class="report-meta">
+      <div>
+        <span class="eyebrow">Instantané conservé</span>
+        <h2>Bilan {{ report.annee }}</h2>
+        <p>Version {{ report.version }} · généré le {{ report.dateGeneration | date:'dd/MM/yyyy à HH:mm' }}
+          par {{ report.generePar }}</p>
+      </div>
+      <button type="button" class="secondary-button" (click)="exportPdf()" [disabled]="isExporting">
+        {{ isExporting ? 'Préparation…' : 'Télécharger le PDF' }}
+      </button>
+    </section>
+
+    <section class="stats-grid" aria-label="Synthèse chiffrée">
+      <article class="stat-card"><span>Événements</span><strong>{{ report.nbEvenements }}</strong></article>
+      <article class="stat-card"><span>Publications</span><strong>{{ report.nbPublications }}</strong></article>
+      <article class="stat-card"><span>Réunions</span><strong>{{ report.nbReunions }}</strong></article>
+      <article class="stat-card"><span>Conventions actives</span><strong>{{ report.nbConventionsActives }}</strong></article>
+      <article class="stat-card"><span>Demandes logistiques</span><strong>{{ report.nbDemandesLogistiques }}</strong></article>
+      <article class="stat-card"><span>Mandats</span><strong>{{ report.nbMandats }}</strong></article>
+      <article class="stat-card"><span>Nouveaux membres</span><strong>{{ report.nbNouveauxMembres }}</strong></article>
+      <article class="stat-card"><span>Demandes d’adhésion</span><strong>{{ report.nbDemandesAdhesion }}</strong></article>
+    </section>
+
+    <section class="breakdowns">
+      <article class="breakdown-card">
+        <h3>Événements par type</h3>
+        @for (bar of bars(report.evenementsParType); track bar.label) {
+          <div class="bar-row"><span>{{ bar.label }}</span><div class="bar-track"><i [style.width.%]="bar.width"></i></div><b>{{ bar.value }}</b></div>
+        }
+      </article>
+      <article class="breakdown-card">
+        <h3>Publications par équipe</h3>
+        @for (bar of bars(report.publicationsParEquipe); track bar.label) {
+          <div class="bar-row"><span>{{ bar.label }}</span><div class="bar-track"><i [style.width.%]="bar.width"></i></div><b>{{ bar.value }}</b></div>
+        }
+      </article>
+      <article class="breakdown-card">
+        <h3>Publications par type</h3>
+        @for (bar of bars(report.publicationsParType); track bar.label) {
+          <div class="bar-row"><span>{{ bar.label }}</span><div class="bar-track"><i [style.width.%]="bar.width"></i></div><b>{{ bar.value }}</b></div>
+        }
+      </article>
+      <article class="breakdown-card">
+        <h3>Logistique par statut</h3>
+        @for (bar of bars(report.logistiqueParStatut); track bar.label) {
+          <div class="bar-row"><span>{{ bar.label }}</span><div class="bar-track"><i [style.width.%]="bar.width"></i></div><b>{{ bar.value }}</b></div>
+        }
+      </article>
+      <article class="breakdown-card">
+        <h3>Mandats par rôle</h3>
+        @for (bar of bars(report.mandatsParRole); track bar.label) {
+          <div class="bar-row"><span>{{ bar.label }}</span><div class="bar-track"><i [style.width.%]="bar.width"></i></div><b>{{ bar.value }}</b></div>
+        }
+      </article>
+      <article class="breakdown-card">
+        <h3>Mouvements de membres</h3>
+        @for (bar of bars(report.membresParStatut); track bar.label) {
+          <div class="bar-row"><span>{{ bar.label }}</span><div class="bar-track"><i [style.width.%]="bar.width"></i></div><b>{{ bar.value }}</b></div>
+        }
+      </article>
+      <article class="breakdown-card">
+        <h3>Décisions d’adhésion</h3>
+        @for (bar of bars(report.adhesionsParDecision); track bar.label) {
+          <div class="bar-row"><span>{{ bar.label }}</span><div class="bar-track"><i [style.width.%]="bar.width"></i></div><b>{{ bar.value }}</b></div>
+        }
+      </article>
+    </section>
+  } @else {
+    <div class="state-card">Sélectionnez une année puis générez le rapport pour afficher ses indicateurs.</div>
+  }
+
+  <section class="history-section">
+    <div class="section-heading">
+      <div><p class="eyebrow">Traçabilité</p><h2>Rapports générés</h2></div>
+      @if (isLoadingHistory) { <span class="muted">Chargement de l’historique…</span> }
+    </div>
+    @if (!archives.length && !isLoadingHistory) {
+      <div class="empty-card">Aucun rapport n’a encore été archivé.</div>
+    } @else {
+      <div class="history-list">
+        @for (archive of archives; track archive.id) {
+          <button type="button" class="history-item" (click)="openArchive(archive)">
+            <span class="year-badge">{{ archive.annee }}</span>
+            <span class="history-text"><strong>Version {{ archive.version }}</strong>
+              <small>Généré le {{ archive.dateGeneration | date:'dd/MM/yyyy à HH:mm' }} par {{ archive.generePar }}</small></span>
+            <span class="open-label">Consulter →</span>
+          </button>
+        }
+      </div>
+    }
+  </section>
+</main>

@@ -1,0 +1,19 @@
+<div class="dashboard-shell" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-sidebar
+    [collapsed]="sidebarCollapsed"
+    (toggleSidebar)="onSidebarToggle()">
+  </app-sidebar>
+
+  <div class="dashboard-main">
+    <app-topbar (toggleSidebar)="onSidebarToggle()"></app-topbar>
+
+    <main class="dashboard-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+
+  <!-- Mobile overlay -->
+  @if (!sidebarCollapsed) {
+    <div class="sidebar-overlay" (click)="onSidebarToggle()"></div>
+  }
+</div>

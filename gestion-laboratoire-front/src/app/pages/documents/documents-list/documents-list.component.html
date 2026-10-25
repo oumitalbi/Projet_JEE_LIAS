@@ -1,0 +1,179 @@
+<main class="documents-page">
+  <header class="archive-heading">
+    <div class="heading-copy">
+      <p class="eyebrow">ARCHIVES DU LABORATOIRE</p>
+      <h1>Documents</h1>
+      <p class="intro">Un espace commun pour retrouver les pièces utiles aux activités du LIAS.</p>
+    </div>
+    <div class="heading-side">
+      <div class="archive-count">
+        <span class="count-value">{{ typeCount }}</span>
+        <span>{{ isArchivedView ? 'élément(s) archivé(s)' : 'document(s) affiché(s)' }}</span>
+      </div>
+      <button *ngIf="canUpload && !isArchivedView" type="button" class="upload-button" (click)="openUpload()">
+        <span aria-hidden="true">＋</span> Déposer un document
+      </button>
+    </div>
+    <div class="heading-orbit orbit-one"></div>
+    <div class="heading-orbit orbit-two"></div>
+  </header>
+
+  <section class="search-strip" aria-label="Recherche documentaire">
+    <div class="search-field">
+      <span class="search-icon" aria-hidden="true">⌕</span>
+      <input type="search" [ngModel]="searchTerm" (ngModelChange)="onSearchChange($event)"
+             placeholder="Rechercher par nom de fichier…" aria-label="Rechercher un document">
+      <span *ngIf="searchTerm.trim().length > 0 && searchTerm.trim().length < 2" class="search-hint">2 caractères minimum</span>
+    </div>
+    <div class="search-meta">
+      <span class="search-dot"></span>
+      <span>Recherche globale LIAS</span>
+    </div>
+  </section>
+
+  <section class="filter-dock" aria-label="Filtres documentaires">
+    <div class="type-filters">
+      <span class="filter-caption">Type</span>
+      <button type="button" class="type-chip" [class.selected]="selectedType === 'TOUS'" (click)="setType('TOUS')">Tous</button>
+      <button *ngFor="let type of types" type="button" class="type-chip"
+              [class.selected]="selectedType === type.value" (click)="setType(type.value)">
+        <span class="chip-mark">{{ type.icon }}</span>{{ type.label }}
+      </button>
+    </div>
+    <div class="secondary-filters">
+      <label>
+        Événement
+        <select [(ngModel)]="selectedEventId" aria-label="Filtrer par événement">
+          <option value="TOUS">Tous les événements</option>
+          <option *ngFor="let event of evenements" [value]="event.id">{{ event.titre }}</option>
+        </select>
+      </label>
+      <label>
+        Année
+        <select [(ngModel)]="selectedYear" aria-label="Filtrer par année">
+          <option value="TOUTES">Toutes les années</option>
+          <option *ngFor="let year of years" [value]="year">{{ year }}</option>
+        </select>
+      </label>
+      <span class="filter-spacer"></span>
+      <button *ngIf="canViewArchives" type="button" class="archive-toggle"
+              [class.active]="isArchivedView" (click)="setArchiveView(!isArchivedView)">
+        <span aria-hidden="true">{{ isArchivedView ? '↶' : '▤' }}</span>
+        {{ isArchivedView ? 'Documents actifs' : 'Archives' }}
+      </button>
+    </div>
+  </section>
+
+  <p *ngIf="actionError" class="inline-error" role="alert">{{ actionError }}</p>
+
+  <div *ngIf="isLoading" class="loading-state" role="status">
+    <span class="loader-ring"></span>
+    <p>Chargement de l’archive documentaire…</p>
+  </div>
+
+  <section *ngIf="loadError && !isLoading" class="state-card error-state" role="alert">
+    <span class="state-symbol">!</span>
+    <h2>Les documents ne sont pas accessibles</h2>
+    <p>{{ loadError }}</p>
+    <button class="retry-button" type="button" (click)="loadDocuments()">Réessayer</button>
+  </section>
+
+  <section *ngIf="!isLoading && !loadError && groupedDocuments.length === 0" class="state-card">
+    <span class="empty-symbol" aria-hidden="true">▱</span>
+    <h2>{{ isArchivedView ? 'Aucune archive à afficher' : 'Aucun document correspondant' }}</h2>
+    <p *ngIf="!isArchivedView">Essayez d’ajuster les filtres ou déposez un document lié à une activité du laboratoire.</p>
+    <p *ngIf="isArchivedView">Les documents archivés apparaîtront ici et pourront être restaurés par la direction.</p>
+  </section>
+
+  <div *ngIf="!isLoading && !loadError && groupedDocuments.length > 0" class="archive-stream">
+    <section *ngFor="let group of groupedDocuments" class="date-group">
+      <div class="group-rail">
+        <span class="rail-dot"></span>
+        <div>
+          <p class="group-event">{{ group.eventLabel }}</p>
+          <p class="group-date">{{ group.dateLabel }}</p>
+        </div>
+      </div>
+      <div class="document-stack">
+        <article *ngFor="let item of group.documents" class="document-row" [class.is-archived]="item.estArchive">
+          <div class="file-symbol" [attr.data-type]="item.typeDocument">{{ typeIcon(item.typeDocument) }}</div>
+          <div class="document-main">
+            <div class="document-heading">
+              <h2 [title]="item.nomFichier">{{ item.nomFichier }}</h2>
+              <span class="type-label" [attr.data-type]="item.typeDocument">{{ typeLabel(item.typeDocument) }}</span>
+              <span *ngIf="item.estArchive" class="archived-label">Archivé</span>
+            </div>
+            <div class="document-meta">
+              <span>{{ formatDate(item.dateUpload) }}</span>
+              <i aria-hidden="true"></i>
+              <span>{{ formatSize(item.taille) }}</span>
+              <ng-container *ngIf="item.deposePar as deposant">
+                <i aria-hidden="true"></i>
+                <span>Déposé par {{ deposant.prenom }} {{ deposant.nom }}</span>
+              </ng-container>
+            </div>
+          </div>
+          <div class="document-actions">
+            <button *ngIf="!item.estArchive" type="button" class="icon-action download-action"
+                    (click)="download(item)" [attr.aria-label]="'Télécharger ' + item.nomFichier" title="Télécharger">
+              ↓
+            </button>
+            <button *ngIf="!item.estArchive && item.peutArchiver" type="button" class="icon-action archive-action"
+                    (click)="archive(item)" [attr.aria-label]="'Archiver ' + item.nomFichier" title="Archiver">
+              ▤
+            </button>
+            <button *ngIf="item.estArchive && canViewArchives" type="button" class="restore-action"
+                    (click)="restore(item)">Restaurer</button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <div class="upload-overlay" [class.visible]="uploadOpen" (click)="closeUpload()">
+    <section class="upload-panel" [class.panel-open]="uploadOpen" role="dialog" aria-modal="true"
+             aria-labelledby="upload-title" (click)="$event.stopPropagation()">
+      <header class="panel-header">
+        <div>
+          <p class="eyebrow">NOUVELLE PIÈCE</p>
+          <h2 id="upload-title">Déposer un document</h2>
+        </div>
+        <button type="button" class="panel-close" aria-label="Fermer" (click)="closeUpload()">×</button>
+      </header>
+      <form [formGroup]="documentForm" (ngSubmit)="submitUpload()" class="upload-form">
+        <div class="form-intro">
+          <span class="form-icon" aria-hidden="true">↑</span>
+          <p>Les documents sont conservés dans l’archive. L’archivage ne supprime jamais le fichier.</p>
+        </div>
+        <label class="form-label" for="document-file">Fichier <span>*</span></label>
+        <label class="drop-zone" for="document-file">
+          <span class="drop-icon" aria-hidden="true">⇧</span>
+          <strong>{{ selectedFile?.name || 'Choisir un fichier' }}</strong>
+          <small>PDF, Office, TXT, RTF, PNG ou JPEG · 5 Mo maximum</small>
+          <input id="document-file" type="file" (change)="onFileSelected($event)"
+                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.png,.jpg,.jpeg">
+        </label>
+        <label class="form-label" for="document-type">Catégorie <span>*</span></label>
+        <select id="document-type" class="form-control" formControlName="type">
+          <option *ngFor="let type of types" [value]="type.value">{{ type.label }}</option>
+        </select>
+        <label class="form-label" for="document-event">Événement associé</label>
+        <select id="document-event" class="form-control" formControlName="evenementId">
+          <option value="">Aucun — document administratif uniquement</option>
+          <option *ngFor="let event of evenements" [value]="event.id">{{ event.titre }}</option>
+        </select>
+        <p *ngIf="documentForm.value.type !== 'DOCUMENT_ADMINISTRATIF'" class="field-hint">
+          Un événement est requis pour cette catégorie.
+        </p>
+        <p *ngIf="uploadError" class="inline-error" role="alert">{{ uploadError }}</p>
+        <div class="form-actions">
+          <button type="button" class="cancel-button" [disabled]="isUploading" (click)="closeUpload()">Annuler</button>
+          <button type="submit" class="upload-button" [disabled]="isUploading">
+            <span *ngIf="isUploading" class="button-spinner"></span>
+            {{ isUploading ? 'Envoi en cours…' : 'Enregistrer le document' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+</main>

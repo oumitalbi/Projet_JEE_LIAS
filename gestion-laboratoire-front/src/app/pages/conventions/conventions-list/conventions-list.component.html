@@ -1,0 +1,242 @@
+<main class="conventions-page">
+  <header class="page-heading">
+    <div>
+      <span class="eyebrow">Coopération &amp; partenariats</span>
+      <h1>Conventions</h1>
+      <p>Centralisez les accords du LIAS et les activités menées avec ses partenaires.</p>
+    </div>
+    <div class="heading-actions">
+      <button *ngIf="isManager" class="secondary-button" type="button" (click)="openPartnerForm()">＋ Partenaire</button>
+      <button *ngIf="isDirector" class="primary-button" type="button" (click)="openCreateForm()">＋ Nouvelle convention</button>
+    </div>
+  </header>
+
+  <div *ngIf="notice" class="notice" [class.error]="noticeIsError" role="status">
+    <span>{{ notice }}</span><button type="button" aria-label="Fermer" (click)="notice = ''">×</button>
+  </div>
+
+  <section class="filter-panel" aria-label="Filtres des conventions">
+    <div class="filter-panel-heading">
+      <div><span class="filter-icon">⌕</span><div><strong>Parcourir les accords</strong><small>Combinez les filtres pour retrouver une convention.</small></div></div>
+      <button *ngIf="isManager" type="button" class="archive-toggle" [class.active]="archived" (click)="toggleArchives()">
+        {{ archived ? '← Conventions courantes' : 'Archives institutionnelles →' }}
+      </button>
+    </div>
+    <div class="filters">
+      <label>Statut
+        <select [(ngModel)]="statutFilter" (ngModelChange)="applyFilters()">
+          <option value="TOUS">Tous les statuts</option>
+          <option value="BROUILLON">Brouillon</option>
+          <option value="A_VENIR">À venir</option>
+          <option value="ACTIVE">Active</option>
+          <option value="EXPIREE">Expirée</option>
+          <option *ngIf="archived" value="ARCHIVEE">Archivée</option>
+        </select>
+      </label>
+      <label>Partenaire
+        <select [(ngModel)]="partenaireFilter" (ngModelChange)="applyFilters()">
+          <option value="TOUS">Tous les partenaires</option>
+          <option *ngFor="let partenaire of partenaires" [value]="partenaire.id">{{ partenaire.nom }}</option>
+        </select>
+      </label>
+      <label>Année de signature
+        <select [(ngModel)]="anneeFilter" (ngModelChange)="applyFilters()">
+          <option value="TOUTES">Toutes les années</option>
+          <option *ngFor="let year of years" [value]="year">{{ year }}</option>
+        </select>
+      </label>
+      <div class="result-count"><strong>{{ filteredConventions.length }}</strong><span>accord(s)</span></div>
+    </div>
+  </section>
+
+  <section *ngIf="userStatus && userStatus !== 'PERMANENT' && userStatus !== 'ASSOCIE' && !isManager" class="access-note">
+    <span>i</span><div><strong>Accès réservé aux membres permanents et associés actifs</strong><p>Les modules de conventions sont des ressources internes du laboratoire.</p></div>
+  </section>
+
+  <section *ngIf="isLoading" class="loading-state"><span class="spinner"></span>Chargement des conventions…</section>
+  <section *ngIf="!isLoading && filteredConventions.length === 0" class="empty-state">
+    <span class="empty-symbol">↔</span>
+    <h2>Aucune convention trouvée</h2>
+    <p>Modifiez les filtres ou créez une convention pour démarrer le suivi d’un partenariat.</p>
+    <button *ngIf="isDirector" type="button" class="primary-button" (click)="openCreateForm()">Créer une convention</button>
+  </section>
+
+  <section *ngIf="!isLoading && filteredConventions.length > 0" class="convention-grid">
+    <article *ngFor="let convention of filteredConventions" class="convention-card" (click)="openDetail(convention)"
+      tabindex="0" (keydown.enter)="openDetail(convention)" [class.is-archived]="convention.archivee">
+      <div class="card-accent"></div>
+      <div class="card-head">
+        <span class="status-badge" [ngClass]="'status-' + convention.statut.toLowerCase()">
+          <i></i>{{ statusLabel(convention.statut) }}
+        </span>
+        <span *ngIf="convention.document" class="document-mark" title="Document PDF attaché"><span>PDF</span> ↗</span>
+      </div>
+      <div class="partner-line">
+        <span class="partner-emblem">{{ convention.partenaire?.nom?.slice(0, 1) || 'P' }}</span>
+        <div><strong>{{ convention.partenaire?.nom || 'Partenaire non renseigné' }}</strong>
+          <small>{{ partnerTypeLabel(convention.partenaire?.type) }}<span *ngIf="convention.partenaire?.pays"> · {{ convention.partenaire.pays }}</span></small>
+        </div>
+      </div>
+      <h2>{{ convention.titre || 'Convention sans titre' }}</h2>
+      <p *ngIf="convention.description" class="card-description">{{ convention.description }}</p>
+      <div class="card-dates">
+        <div><small>Signature</small><strong>{{ formatDate(convention.dateSignature) }}</strong></div>
+        <span class="date-arrow">→</span>
+        <div><small>Échéance</small><strong>{{ formatDate(convention.dateExpiration) }}</strong></div>
+      </div>
+      <footer class="card-footer">
+        <span class="activity-count"><span>⌁</span>{{ convention.activites?.length || 0 }} activité(s) associée(s)</span>
+        <span class="open-card">Détails <b>↗</b></span>
+      </footer>
+    </article>
+  </section>
+</main>
+
+<div class="drawer-backdrop" [class.open]="detailOpen" (click)="closeDetail()">
+  <aside *ngIf="selectedConvention as convention" class="detail-drawer" [class.open]="detailOpen" (click)="$event.stopPropagation()">
+    <header class="drawer-header">
+      <div><span class="eyebrow">Dossier de collaboration</span><h2>Convention</h2></div>
+      <button type="button" class="close-button" aria-label="Fermer" (click)="closeDetail()">×</button>
+    </header>
+    <div class="drawer-body">
+      <div class="detail-status">
+        <span class="status-badge" [ngClass]="'status-' + convention.statut.toLowerCase()"><i></i>{{ statusLabel(convention.statut) }}</span>
+        <span *ngIf="convention.archivee" class="archive-chip">Archive</span>
+      </div>
+      <h1 class="detail-title">{{ convention.titre }}</h1>
+      <section class="partner-detail">
+        <span class="partner-emblem large">{{ convention.partenaire?.nom?.slice(0, 1) || 'P' }}</span>
+        <div><small>Partenaire signataire</small><strong>{{ convention.partenaire?.nom }}</strong>
+          <span>{{ partnerTypeLabel(convention.partenaire?.type) }}<span *ngIf="convention.partenaire?.pays"> · {{ convention.partenaire.pays }}</span></span>
+          <a *ngIf="convention.partenaire?.contactEmail" [href]="'mailto:' + convention.partenaire.contactEmail">{{ convention.partenaire.contactEmail }}</a>
+        </div>
+      </section>
+      <p *ngIf="convention.description" class="detail-description">{{ convention.description }}</p>
+      <div class="date-summary">
+        <div><small>Date de signature</small><strong>{{ formatDate(convention.dateSignature) }}</strong></div>
+        <span></span>
+        <div><small>Date d’échéance</small><strong>{{ formatDate(convention.dateExpiration) }}</strong></div>
+      </div>
+
+      <section class="detail-section">
+        <div class="section-title"><h3>Document contractuel</h3><span class="section-count">{{ convention.historiqueDocuments?.length || 0 }} version(s)</span></div>
+        <div *ngIf="convention.document as document" class="document-row">
+          <span class="pdf-icon">PDF</span><div><strong>{{ document.nomFichier }}</strong><small>{{ document.dateDepot ? (document.dateDepot | date:'dd/MM/yyyy') : 'Document lié' }}</small></div>
+          <button type="button" aria-label="Télécharger le document" (click)="downloadDocument(document.id, document.nomFichier)">↓</button>
+        </div>
+        <p *ngIf="!convention.document" class="empty-inline">Aucun document n’est encore attaché.</p>
+        <div *ngIf="convention.historiqueDocuments?.length" class="document-history">
+          <small>Historique conservé</small>
+          <div *ngFor="let previous of convention.historiqueDocuments" class="history-row">
+            <span>{{ previous.nomFichier }}</span><span>{{ previous.dateDepot | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+        </div>
+        <div *ngIf="convention.peutModifier && !convention.archivee" class="upload-area">
+          <input type="file" accept="application/pdf,.pdf" (change)="onFileSelected($event)" aria-label="Choisir le PDF de la convention">
+          <button *ngIf="pendingDocumentId" class="soft-button" type="button" [disabled]="isAttaching" (click)="attachPendingDocument()">
+            {{ isAttaching ? 'Attachement…' : 'Réessayer l’attachement sans ré-uploader' }}
+          </button>
+          <button *ngIf="!pendingDocumentId" class="soft-button" type="button" [disabled]="!selectedFile || isUploading" (click)="uploadAndAttachDocument()">
+            {{ isUploading ? 'Dépôt du document…' : 'Déposer et attacher le PDF' }}
+          </button>
+          <p *ngIf="uploadError" class="field-error">{{ uploadError }}</p>
+        </div>
+      </section>
+
+      <section class="detail-section">
+        <div class="section-title"><h3>Activités associées</h3><span class="section-count">{{ convention.activites?.length || 0 }}</span></div>
+        <div *ngIf="convention.activites?.length" class="activity-list">
+          <a *ngFor="let activity of convention.activites" class="activity-row" routerLink="/dashboard/evenements">
+            <span class="activity-date">{{ activity.dateDebut ? (activity.dateDebut | date:'dd MMM') : '—' }}</span>
+            <span class="activity-info"><strong>{{ activity.titre }}</strong><small>{{ activity.type || 'Événement' }}</small></span>
+            <button *ngIf="convention.peutModifier && !convention.archivee" type="button" class="unlink-button"
+              aria-label="Retirer l’activité" (click)="$event.preventDefault(); $event.stopPropagation(); removeActivity(activity.id)">×</button>
+          </a>
+        </div>
+        <p *ngIf="!convention.activites?.length" class="empty-inline">Aucune activité reliée à ce partenariat.</p>
+        <div *ngIf="convention.peutModifier && !convention.archivee && availableActivities.length" class="activity-add">
+          <select [(ngModel)]="selectedActivityId" aria-label="Sélectionner un événement">
+            <option value="">Lier un événement…</option>
+            <option *ngFor="let event of availableActivities" [value]="event.id">{{ event.titre }}</option>
+          </select>
+          <button type="button" [disabled]="!selectedActivityId || isActionLoading" (click)="addActivity()">Lier</button>
+        </div>
+      </section>
+
+      <section class="audit-section">
+        <small *ngIf="convention.creePar">Créée par {{ convention.creePar.prenom }} {{ convention.creePar.nom }} · {{ convention.dateCreation | date:'dd/MM/yyyy' }}</small>
+        <small *ngIf="convention.modifiePar">Dernière modification par {{ convention.modifiePar.prenom }} {{ convention.modifiePar.nom }} · {{ convention.dateModification | date:'dd/MM/yyyy HH:mm' }}</small>
+        <small *ngIf="convention.archivePar">Archivée par {{ convention.archivePar.prenom }} {{ convention.archivePar.nom }} · {{ convention.dateArchivage | date:'dd/MM/yyyy' }}</small>
+      </section>
+      <footer class="detail-actions">
+        <button *ngIf="convention.peutModifier && !convention.archivee" type="button" class="soft-button" (click)="openEditForm()">Modifier</button>
+        <button *ngIf="convention.peutArchiver && !convention.archivee" type="button" class="danger-button" [disabled]="isActionLoading" (click)="archive(convention)">Archiver</button>
+        <button *ngIf="convention.archivee && isManager" type="button" class="soft-button" [disabled]="isActionLoading" (click)="restore(convention)">Restaurer</button>
+      </footer>
+    </div>
+  </aside>
+</div>
+
+<div class="drawer-backdrop form-layer" [class.open]="formOpen" (click)="closeForm()">
+  <aside class="form-drawer" [class.open]="formOpen" (click)="$event.stopPropagation()">
+    <header class="drawer-header">
+      <div><span class="eyebrow">{{ selectedConvention ? 'Actualisation du dossier' : 'Nouvel accord' }}</span>
+        <h2>{{ selectedConvention ? 'Modifier la convention' : 'Créer une convention' }}</h2></div>
+      <button type="button" class="close-button" (click)="closeForm()" aria-label="Fermer">×</button>
+    </header>
+    <form *ngIf="conventionForm" [formGroup]="conventionForm" (ngSubmit)="saveConvention()" class="convention-form">
+      <label>Titre de la convention <span>*</span><input formControlName="titre" maxlength="200" placeholder="Ex. Convention de coopération scientifique"></label>
+      <small *ngIf="conventionForm.get('titre')?.touched && conventionForm.get('titre')?.invalid" class="field-error">Le titre est obligatoire (200 caractères maximum).</small>
+      <label>Partenaire signataire <span>*</span>
+        <div class="partner-select-row">
+          <select formControlName="partenaireId"><option value="">Choisir un partenaire…</option>
+            <option *ngFor="let partner of partenaires" [value]="partner.id">{{ partner.nom }}</option>
+          </select>
+          <button type="button" class="add-partner-icon" title="Ajouter un partenaire" (click)="openPartnerForm()">＋</button>
+        </div>
+      </label>
+      <small *ngIf="conventionForm.get('partenaireId')?.touched && conventionForm.get('partenaireId')?.invalid" class="field-error">Sélectionnez un partenaire.</small>
+      <label>Objet et description<textarea formControlName="description" rows="5" placeholder="Décrivez les objectifs et le cadre de la collaboration…"></textarea></label>
+      <div class="date-fields">
+        <label>Date de signature <span>*</span><input type="date" formControlName="dateSignature"></label>
+        <label>Date d’expiration <span>*</span><input type="date" formControlName="dateExpiration"></label>
+      </div>
+      <small *ngIf="conventionForm.hasError('invalidPeriod')" class="field-error">La date d’expiration doit être postérieure ou égale à la date de signature.</small>
+      <small *ngIf="conventionForm.get('dateSignature')?.touched && conventionForm.get('dateSignature')?.invalid" class="field-error">La date de signature est obligatoire.</small>
+      <small *ngIf="conventionForm.get('dateExpiration')?.touched && conventionForm.get('dateExpiration')?.invalid" class="field-error">La date d’expiration est obligatoire.</small>
+      <div class="workflow-hint"><span>1</span><p>Enregistrez les informations, puis ajoutez le PDF dans le panneau de détail. Le document est déposé et attaché en deux étapes.</p></div>
+      <p *ngIf="errorMessage" class="form-error">{{ errorMessage }}</p>
+      <footer class="form-actions">
+        <button type="button" class="quiet-button" (click)="closeForm()">Annuler</button>
+        <button type="submit" class="primary-button" [disabled]="isSaving">{{ isSaving ? 'Enregistrement…' : 'Enregistrer la convention' }}</button>
+      </footer>
+    </form>
+  </aside>
+</div>
+
+<div class="center-backdrop" *ngIf="partnerFormOpen" (click)="closePartnerForm()">
+  <section class="partner-dialog" (click)="$event.stopPropagation()">
+    <header><div><span class="eyebrow">Répertoire institutionnel</span><h2>Ajouter un partenaire</h2></div>
+      <button type="button" class="close-button" (click)="closePartnerForm()">×</button></header>
+    <form [formGroup]="partenaireForm" (ngSubmit)="savePartner()">
+      <label>Nom officiel <span>*</span><input formControlName="nom" maxlength="200" placeholder="Nom de l’université ou de l’organisme"></label>
+      <small *ngIf="partenaireForm.get('nom')?.touched && partenaireForm.get('nom')?.invalid" class="field-error">Le nom du partenaire est obligatoire.</small>
+      <label>Type de partenaire <span>*</span><select formControlName="type"><option value="">Choisir un type…</option>
+        <option *ngFor="let type of partnerTypes" [value]="type.value">{{ type.label }}</option></select></label>
+      <label>Pays<input formControlName="pays" placeholder="Ex. Maroc"></label>
+      <label>E-mail du contact<input type="email" formControlName="contactEmail" placeholder="contact@organisme.ma"></label>
+      <small *ngIf="partenaireForm.get('contactEmail')?.touched && partenaireForm.get('contactEmail')?.invalid" class="field-error">Saisissez une adresse e-mail valide.</small>
+      <p *ngIf="errorMessage" class="form-error">{{ errorMessage }}</p>
+      <footer><button type="button" class="quiet-button" (click)="closePartnerForm()">Annuler</button>
+        <button type="submit" class="primary-button" [disabled]="isSaving">{{ isSaving ? 'Enregistrement…' : 'Ajouter le partenaire' }}</button></footer>
+    </form>
+  </section>
+</div>
+
+<div class="center-backdrop confirmation-layer" *ngIf="showConfirmation" (click)="cancelConfirmation()">
+  <section class="confirmation-dialog" (click)="$event.stopPropagation()">
+    <span class="confirm-mark">!</span><h2>{{ confirmationTitle }}</h2><p>{{ confirmationText }}</p>
+    <footer><button type="button" class="quiet-button" (click)="cancelConfirmation()">Annuler</button>
+      <button type="button" class="primary-button" (click)="executeConfirmation()">Confirmer</button></footer>
+  </section>
+</div>

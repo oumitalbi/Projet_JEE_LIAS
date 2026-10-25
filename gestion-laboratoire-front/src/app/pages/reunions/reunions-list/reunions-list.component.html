@@ -1,0 +1,224 @@
+<main class="meetings-page">
+  <header class="meetings-heading">
+    <div>
+      <span class="eyebrow">Vie du laboratoire</span>
+      <h1>Réunions &amp; PV</h1>
+      <p>Planifiez les échanges, suivez les décisions et retrouvez les procès-verbaux.</p>
+    </div>
+    <button *ngIf="canPlan" class="primary-button" type="button" (click)="openCreateForm()">
+      <span aria-hidden="true">＋</span> Planifier une réunion
+    </button>
+  </header>
+
+  <div *ngIf="successMessage" class="notice" [class.error]="noticeError" role="status">
+    <span>{{ successMessage }}</span>
+    <button type="button" aria-label="Fermer" (click)="successMessage = ''">×</button>
+  </div>
+
+  <section class="filter-panel" aria-label="Filtres des réunions">
+    <div class="filter-title">
+      <div><span class="filter-mark"></span><strong>Explorer les réunions</strong></div>
+      <button *ngIf="canSeeArchives" class="quiet-button" type="button" (click)="toggleArchived()">
+        {{ showArchived ? 'Voir les réunions actives' : 'Archives' }}
+      </button>
+    </div>
+    <div class="filter-controls">
+      <label>
+        Statut
+        <select [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
+          <option value="TOUS">Tous les statuts</option>
+          <option value="PLANIFIEE">Planifiée</option>
+          <option value="EN_COURS">En cours</option>
+          <option value="TERMINEE">Terminée</option>
+          <option value="ANNULEE">Annulée</option>
+          <option *ngIf="showArchived" value="ARCHIVEE">Archivée</option>
+        </select>
+      </label>
+      <label>
+        Période
+        <select [(ngModel)]="periodFilter" (ngModelChange)="applyFilters()">
+          <option value="TOUTES">Toutes les périodes</option>
+          <option value="A_VENIR">À venir</option>
+          <option value="PASSEES">Passées</option>
+        </select>
+      </label>
+      <label>
+        Équipe
+        <select [(ngModel)]="teamFilter" (ngModelChange)="applyFilters()">
+          <option value="TOUTES">Toutes les équipes</option>
+          <option *ngFor="let team of teams" [value]="team">{{ team }}</option>
+        </select>
+      </label>
+      <label class="mine-filter">
+        <input type="checkbox" [ngModel]="onlyMine" (ngModelChange)="setMineOnly($event)">
+        <span>Mes réunions</span>
+      </label>
+    </div>
+  </section>
+
+  <section *ngIf="isDoctorant" class="restricted-state">
+    <span class="restricted-icon">!</span>
+    <h2>Accès réservé aux membres non doctorants</h2>
+    <p>Les réunions internes ne sont pas accessibles avec le statut de votre compte.</p>
+  </section>
+
+  <section *ngIf="isLoading" class="loading-state"><span class="spinner"></span> Chargement des réunions…</section>
+  <section *ngIf="!isDoctorant && !isLoading && filteredReunions.length === 0" class="empty-state">
+    <div class="empty-icon">◷</div>
+    <h2>Aucune réunion à afficher</h2>
+    <p>Essayez d’élargir les filtres ou planifiez une nouvelle réunion.</p>
+  </section>
+
+  <section *ngIf="!isDoctorant && !isLoading && filteredReunions.length" class="meeting-grid">
+    <article *ngFor="let reunion of filteredReunions" class="meeting-card" (click)="openDetail(reunion)" tabindex="0"
+      (keydown.enter)="openDetail(reunion)" [class.cancelled]="reunion.statut === 'ANNULEE'">
+      <div class="card-top">
+        <span class="status-badge" [ngClass]="'status-' + reunion.statut.toLowerCase()">{{ statusLabel(reunion.statut) }}</span>
+        <span *ngIf="reunion.pv" class="pv-indicator" title="Procès-verbal disponible">PV <span>↗</span></span>
+      </div>
+      <h2>{{ reunion.titre || 'Réunion sans titre' }}</h2>
+      <p class="meeting-date"><span>◷</span>{{ formatRange(reunion.dateDebut, reunion.dateFin) }}</p>
+      <p *ngIf="reunion.lieu" class="meeting-location"><span>⌖</span>{{ reunion.lieu }}</p>
+      <div class="card-bottom">
+        <div class="avatar-stack">
+          <span *ngFor="let participant of reunion.participants | slice:0:4" class="member-avatar"
+            [title]="fullName(participant)">{{ initials(participant) }}</span>
+          <span *ngIf="(reunion.participants?.length || 0) > 4" class="member-avatar more">
+            +{{ reunion.participants.length - 4 }}
+          </span>
+        </div>
+        <span class="participant-count">{{ reunion.participants?.length || 0 }} invité(s)</span>
+      </div>
+    </article>
+  </section>
+</main>
+
+<div class="panel-backdrop" [class.open]="detailOpen" (click)="closeDetail()">
+  <aside class="detail-panel" [class.open]="detailOpen" (click)="$event.stopPropagation()" *ngIf="selectedReunion as reunion">
+    <header class="panel-header">
+      <div><span class="eyebrow">Fiche de réunion</span><h2>Détails</h2></div>
+      <button class="close-button" type="button" (click)="closeDetail()" aria-label="Fermer">×</button>
+    </header>
+    <div class="panel-content">
+      <div class="detail-badges">
+        <span class="status-badge" [ngClass]="'status-' + reunion.statut.toLowerCase()">{{ statusLabel(reunion.statut) }}</span>
+        <span *ngIf="reunion.archivee" class="archive-badge">Archive</span>
+      </div>
+      <h1 class="detail-title">{{ reunion.titre }}</h1>
+      <div class="detail-fact"><span class="fact-icon">◷</span><div><small>Date et heure</small><strong>{{ formatLong(reunion.dateDebut) }}</strong><strong *ngIf="reunion.dateFin">Fin : {{ formatLong(reunion.dateFin) }}</strong></div></div>
+      <div *ngIf="reunion.lieu" class="detail-fact"><span class="fact-icon">⌖</span><div><small>Lieu</small><strong>{{ reunion.lieu }}</strong></div></div>
+      <section class="detail-section">
+        <h3>Ordre du jour</h3>
+        <p class="agenda-text">{{ reunion.ordreDuJour || 'Ordre du jour non renseigné.' }}</p>
+      </section>
+      <section class="detail-section">
+        <h3>Organisateur</h3>
+        <div class="person-row" *ngIf="reunion.organisateur as organizer">
+          <span class="person-avatar">{{ initials(organizer) }}</span>
+          <div><strong>{{ fullName(organizer) }}</strong><small>{{ organizer.equipe || 'Équipe non précisée' }}</small></div>
+        </div>
+      </section>
+      <section class="detail-section">
+        <h3>Participants <span class="count-pill">{{ reunion.participants?.length || 0 }}</span></h3>
+        <div class="people-list">
+          <div *ngFor="let participant of reunion.participants" class="person-row">
+            <span class="person-avatar">{{ initials(participant) }}</span>
+            <div><strong>{{ fullName(participant) }}</strong><small>{{ participant.equipe || 'Équipe non précisée' }}</small></div>
+            <button *ngIf="canRemoveParticipant(participant)" class="remove-person" type="button"
+              [disabled]="actionLoading" title="Retirer le participant" (click)="removeParticipant(participant)">−</button>
+          </div>
+          <p *ngIf="!reunion.participants?.length" class="muted">Aucun participant invité.</p>
+        </div>
+        <div *ngIf="canManageParticipants(reunion) && getAvailableParticipants().length" class="add-person">
+          <select [(ngModel)]="participantToAdd" aria-label="Choisir un participant">
+            <option value="">Ajouter un participant…</option>
+            <option *ngFor="let member of getAvailableParticipants()" [value]="member.id">{{ member.prenom }} {{ member.nom }}</option>
+          </select>
+          <button type="button" [disabled]="!participantToAdd || actionLoading" (click)="addParticipant()">Ajouter</button>
+        </div>
+      </section>
+      <section class="detail-section pv-section">
+        <h3>Procès-verbal</h3>
+        <div *ngIf="reunion.pv as pv" class="pv-file">
+          <span class="file-icon">PDF</span><div><strong>{{ pv.nomFichier }}</strong><small>{{ pv.dateDepot ? (pv.dateDepot | date:'dd/MM/yyyy') : 'Document associé' }}</small></div>
+          <button type="button" (click)="downloadPv(pv.id, pv.nomFichier)" aria-label="Télécharger le PV">↓</button>
+        </div>
+        <p *ngIf="!reunion.pv" class="muted">Aucun PV n’est encore attaché.</p>
+        <div *ngIf="reunion.historiquePv?.length" class="pv-history">
+          <small>Historique des versions</small>
+          <div *ngFor="let item of reunion.historiquePv" class="history-row">
+            <span>{{ item.nomFichier }}</span><span>{{ item.dateDepot | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+        </div>
+        <div *ngIf="canUploadPv(reunion)" class="pv-upload">
+          <input type="file" accept="application/pdf,.pdf" (change)="onPvSelected($event)" aria-label="Sélectionner un PV">
+          <button *ngIf="pendingPvDocumentId" type="button" class="outline-button" [disabled]="isUploadingPv || isAttachingPv" (click)="attachPendingPv()">
+            {{ isAttachingPv ? 'Attachement…' : 'Réessayer l’attachement du PV' }}
+          </button>
+          <button *ngIf="!pendingPvDocumentId" type="button" class="outline-button" [disabled]="!selectedPvFile || isUploadingPv || isAttachingPv" (click)="uploadAndAttachPv()">
+            {{ isUploadingPv ? 'Dépôt…' : 'Déposer et attacher le PV' }}
+          </button>
+          <p *ngIf="pvError" class="field-error">{{ pvError }}</p>
+        </div>
+      </section>
+      <footer class="detail-actions">
+        <button *ngIf="canEdit(reunion)" class="outline-button" type="button" (click)="openEditForm()">Modifier</button>
+        <button *ngFor="let status of getStatusOptions(reunion)" class="outline-button" type="button"
+          [disabled]="actionLoading" (click)="changeStatus(status)">Marquer {{ statusLabel(status).toLowerCase() }}</button>
+        <button *ngIf="reunion.peutModifier && !reunion.archivee" class="danger-button" type="button"
+          [disabled]="actionLoading" (click)="archive(reunion)">Archiver</button>
+        <button *ngIf="reunion.archivee && canSeeArchives" class="outline-button" type="button"
+          [disabled]="actionLoading" (click)="unarchive(reunion)">Désarchiver</button>
+      </footer>
+    </div>
+  </aside>
+</div>
+
+<div class="form-backdrop" [class.open]="formOpen" (click)="closeForm()">
+  <section class="meeting-form-panel" [class.open]="formOpen" (click)="$event.stopPropagation()">
+    <header class="panel-header">
+      <div><span class="eyebrow">{{ selectedReunion ? 'Mise à jour' : 'Nouvelle réunion' }}</span>
+        <h2>{{ selectedReunion ? 'Modifier la réunion' : 'Planifier une réunion' }}</h2></div>
+      <button class="close-button" type="button" (click)="closeForm()" aria-label="Fermer">×</button>
+    </header>
+    <form [formGroup]="reunionForm" (ngSubmit)="saveReunion()" class="meeting-form">
+      <label>Titre <span>*</span><input formControlName="titre" maxlength="200" placeholder="Ex. Conseil de laboratoire"></label>
+      <small *ngIf="reunionForm.get('titre')?.touched && reunionForm.get('titre')?.invalid" class="field-error">Le titre est obligatoire (200 caractères maximum).</small>
+      <label>Ordre du jour <span>*</span><textarea formControlName="ordreDuJour" rows="4" placeholder="Sujets à aborder…"></textarea></label>
+      <small *ngIf="reunionForm.get('ordreDuJour')?.touched && reunionForm.get('ordreDuJour')?.invalid" class="field-error">L’ordre du jour est obligatoire.</small>
+      <div class="date-fields">
+        <label>Date et heure de début <span>*</span><input type="datetime-local" formControlName="dateDebut"></label>
+        <label>Date et heure de fin <span>*</span><input type="datetime-local" formControlName="dateFin"></label>
+      </div>
+      <small *ngIf="reunionForm.hasError('dateFinInvalide')" class="field-error">La date de fin doit être égale ou postérieure à la date de début.</small>
+      <label>Lieu <span>*</span><input formControlName="lieu" maxlength="255" placeholder="Salle, bâtiment ou visioconférence"></label>
+      <fieldset class="participants-field">
+        <legend>Participants invités <span>*</span></legend>
+        <p class="helper">L’organisateur est inclus automatiquement.</p>
+        <div class="member-picker">
+          <label *ngFor="let member of membres" class="member-choice">
+            <input type="checkbox" [checked]="selectedParticipantIds.includes(member.id)"
+              (change)="toggleParticipant(member.id, $any($event.target).checked)">
+            <span>{{ member.prenom }} {{ member.nom }}</span><small>{{ member.equipeLaboratoire || 'LIAS' }}</small>
+          </label>
+        </div>
+        <small *ngIf="selectedParticipantIds.length === 0" class="field-error">Sélectionnez au moins un participant.</small>
+      </fieldset>
+      <p *ngIf="formError" class="form-error">{{ formError }}</p>
+      <div class="form-actions">
+        <button type="button" class="quiet-button" (click)="closeForm()">Annuler</button>
+        <button type="submit" class="primary-button" [disabled]="isSaving">
+          {{ isSaving ? 'Enregistrement…' : (selectedReunion ? 'Enregistrer les modifications' : 'Planifier la réunion') }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div class="confirm-backdrop" *ngIf="showActionConfirm" (click)="cancelConfirmation()">
+  <section class="confirm-dialog" (click)="$event.stopPropagation()">
+    <h2>{{ confirmTitle }}</h2><p>{{ confirmMessage }}</p>
+    <div><button type="button" class="quiet-button" (click)="cancelConfirmation()">Retour</button>
+      <button type="button" class="primary-button" (click)="executeConfirmedAction()">Confirmer</button></div>
+  </section>
+</div>
